@@ -81,14 +81,14 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Hey gros, il est temps d'éliminer la concurance", ITEMDRAW_DISABLED);
+	menu.AddItem("", "Hey gros, il est temps d'éliminer la concurrence", ITEMDRAW_DISABLED);
 	menu.AddItem("", "-----------------", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Tu as 12 heures pour voler le marché d'arme", ITEMDRAW_DISABLED);
-	menu.AddItem("", "de la police, ou de voler le marché noire", ITEMDRAW_DISABLED);
-	menu.AddItem("", "de la mafia ou encore de revendre des armes", ITEMDRAW_DISABLED);
-	menu.AddItem("", "au marché noire des dealers.", ITEMDRAW_DISABLED);
+	menu.AddItem("", "de la police, ou pour voler le marché noir", ITEMDRAW_DISABLED);
+	menu.AddItem("", "de la mafia ou encore pour revendre des armes", ITEMDRAW_DISABLED);
+	menu.AddItem("", "au marché noir des dealers.", ITEMDRAW_DISABLED);
 	
 	menu.ExitButton = false;
 	menu.Display(client, 60);

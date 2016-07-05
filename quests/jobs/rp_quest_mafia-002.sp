@@ -70,7 +70,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Mon frère, l'un de nos hommes a disparu.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Nous avons besoin de toi.", ITEMDRAW_DISABLED);
@@ -96,7 +96,7 @@ public void Q1_Start(int objectiveID, int client) {
 public void Q2_Start(int objectiveID, int client) {	
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Vous avez trouvé des traces de son passage ici.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Mais il n'y est pas. Infiltrez-vous dans", ITEMDRAW_DISABLED);
@@ -156,7 +156,7 @@ public void Q5_Done(int objectiveID, int client) {
 	
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Les traces s'arrêtent ici...", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Vous n'avez pas trouvé d'informations supplémentaires.", ITEMDRAW_DISABLED);

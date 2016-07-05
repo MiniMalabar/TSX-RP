@@ -78,7 +78,7 @@ public void Q1_Start(int objectiveID, int client) {
 	g_ObjectiveID = objectiveID;
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "La justice a besoin de vous,", ITEMDRAW_DISABLED);
 	menu.AddItem("", "une personne est actuellement recherchée.", ITEMDRAW_DISABLED);

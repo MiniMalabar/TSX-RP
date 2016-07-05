@@ -67,7 +67,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Maître, nous vous accordons un bonus pour", ITEMDRAW_DISABLED);
 	menu.AddItem("", "vos 3 prochaines condamnations.", ITEMDRAW_DISABLED);

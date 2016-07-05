@@ -78,7 +78,7 @@ public void Q1_Start(int objectiveID, int client) {
 	
 	Format(tmp, sizeof(tmp), "%d %s", count, tmp);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "-----------------", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Monsieur, nous avons une commande de", ITEMDRAW_DISABLED);
 	menu.AddItem("", tmp, ITEMDRAW_DISABLED);

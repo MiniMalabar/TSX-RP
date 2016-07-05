@@ -74,7 +74,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Collègue, nos informations indiquent qu'un meurtrier", ITEMDRAW_DISABLED);
 	menu.AddItem("", "en série fait rage en ville.", ITEMDRAW_DISABLED);
@@ -119,7 +119,7 @@ public void Q2_Start(int objectiveID, int client) {
 	if( rp_ClientCanDrawPanel(client) ) {
 		Menu menu = new Menu(MenuNothing);
 		
-		menu.SetTitle("Quète: %s", QUEST_NAME);
+		menu.SetTitle("Quête: %s", QUEST_NAME);
 		menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 		menu.AddItem("", "Il a tué ! Arrêtez le !", ITEMDRAW_DISABLED);
 		menu.AddItem("", "Quoi qu'il en coûte !", ITEMDRAW_DISABLED);

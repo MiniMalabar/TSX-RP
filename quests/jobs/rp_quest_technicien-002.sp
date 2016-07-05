@@ -70,7 +70,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Hey gros, on a un nouveau prototype d'imprimante et nous", ITEMDRAW_DISABLED);
 	menu.AddItem("", "avons besoin de toi pour l'essayer !", ITEMDRAW_DISABLED);
@@ -106,7 +106,7 @@ public void Q1_Abort(int objectiveID, int client) {
 public void Q2_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Parfait, assure toi que ces machines produisent", ITEMDRAW_DISABLED);
 	menu.AddItem("", "des faux-billets suffisamment longtemps.", ITEMDRAW_DISABLED);

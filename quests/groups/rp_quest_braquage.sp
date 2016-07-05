@@ -205,7 +205,7 @@ public void Q1_Frame(int objectiveID, int client) {
 	if( rp_ClientCanDrawPanel(client) ) {
 		char tmp[64], tmp2[64];		
 		Menu menu = new Menu(MenuInviterBraqueur);
-		menu.SetTitle("Quète: %s", QUEST_NAME);
+		menu.SetTitle("Quête: %s", QUEST_NAME);
 		menu.AddItem("refresh", "Actualiser le menu");
 		menu.AddItem("", "Braqueur confirmé:", ITEMDRAW_DISABLED);
 		for (int i = 0; i < g_stkTeamCount[TEAM_BRAQUEUR]; i++) {
@@ -271,7 +271,7 @@ public void Q3_Frame(int objectiveID, int client) {
 	if( rp_ClientCanDrawPanel(client) ) {
 		char tmp[64], tmp2[2][64];
 		Menu menu = new Menu(MenuSelectPlanque);
-		menu.SetTitle("Quète: %s", QUEST_NAME);
+		menu.SetTitle("Quête: %s", QUEST_NAME);
 		
 		if( g_iJobs[31] == 0 ) {
 			g_iQ3 = objectiveID;
@@ -687,7 +687,7 @@ public Action RP_ClientCanTP(int client) {
 // ----------------------------------------------------------------------------
 void DrawMenu_Invitation(int client, int target) {
 	Menu menu = new Menu(MenuInviterBraqueur);
-	menu.SetTitle("%N souhaite participer\nà la quète %s\n avec vous dans l'équipe: %s.\n \n Acceptez-vous son invitation?", client, QUEST_NAME, TEAM_NAME1);
+	menu.SetTitle("%N souhaite participer\nà la Quête %s\n avec vous dans l'équipe: %s.\n \n Acceptez-vous son invitation?", client, QUEST_NAME, TEAM_NAME1);
 	menu.AddItem("oui", "Oui");
 	menu.AddItem("non", "Non");
 	menu.ExitButton = false;
