@@ -23,17 +23,17 @@
 #include <roleplay.inc>   // https://www.ts-x.eu
 
 //#define DEBUG
-#define QUEST_UNIQID   "18th-001"
+#define QUEST_UNIQID   "dealer-003"
 #define   QUEST_NAME      "Blanchiment d'argent"
 #define   QUEST_TYPE      quest_daily
-#define   QUEST_JOBID      181
+#define   QUEST_JOBID      81
 #define   QUEST_RESUME1   "Voler une arme de la police"
 #define   QUEST_RESUME2   "Rapporter l'arme au chef"
 #define   QUEST_RESUME3   "Déposer l'argent à la banque"
 
 public Plugin myinfo =  {
-	name = "Quête: Blanchiment d'argent", author = "KoSSoLaX", 
-	description = "RolePlay - Quête 18th: Blanchiment d'argent", 
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX", 
+	description = "RolePlay - Quête Dealer: "...QUEST_NAME, 
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -41,7 +41,8 @@ int g_iQuest, g_iDuration[MAXPLAYERS + 1];
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if (g_iQuest == -1)
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -61,13 +62,15 @@ public Action Cmd_Reload(int args) {
 public bool fwdCanStart(int client) {
 	if (rp_GetClientJobID(client) != QUEST_JOBID)
 		return false;
+	if( rp_GetClientInt(client, i_Job) >= 84 )
+		return false;
 	
 	return (countWeapon() >= 3);
 }
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Yo man, on a de nouveaux projets pour toi.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Voles une arme de la police, puis ramène", ITEMDRAW_DISABLED);
@@ -115,7 +118,7 @@ public void Q1_Frame(int objectiveID, int client) {
 public void Q2_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Bien joué, tu l'as ! Rapporte la nous !", ITEMDRAW_DISABLED);
 	
@@ -125,8 +128,9 @@ public void Q2_Start(int objectiveID, int client) {
 	g_iDuration[client] = 24 * 60;
 }
 public void Q2_Frame(int objectiveID, int client) {
-	static int zoneDest = 114;
-	static float dst[3] =  { -2458.9, -3741.6, -1839.1 };
+	static int zoneDest = 211;
+	static float dst[3] =  { -3423.0, -5427.0, -2007.0 };
+
 	float vec[3];
 	GetClientAbsOrigin(client, vec);
 	
@@ -148,7 +152,7 @@ public void Q2_Frame(int objectiveID, int client) {
 public void Q3_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Bien joué !", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Vas déposer cet argent en banque,", ITEMDRAW_DISABLED);
@@ -186,7 +190,7 @@ public void Q3_End(int objectiveID, int client) {
 	
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Les 18th te remercient pour ta rapidité d'action", ITEMDRAW_DISABLED);
 	menu.AddItem("", "et t'offrent: [PvP] AK-47.", ITEMDRAW_DISABLED);

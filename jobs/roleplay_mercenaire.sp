@@ -67,8 +67,8 @@ public void OnPluginStart() {
 	RegServerCmd("rp_item_conprotect",	Cmd_ItemConProtect,		"RP-ITEM",	FCVAR_UNREGISTERED);
 	RegServerCmd("rp_item_enquete_menu",Cmd_ItemEnqueteMenu,	"RP-ITEM",	FCVAR_UNREGISTERED);
 	RegServerCmd("rp_item_enquete",		Cmd_ItemEnquete,		"RP-ITEM",	FCVAR_UNREGISTERED);
-	RegServerCmd("rp_item_camera",		Cmd_ItemCamera,			"RP-ITEM",	FCVAR_UNREGISTERED);
 	RegServerCmd("rp_item_cryptage",	Cmd_ItemCryptage,		"RP-ITEM",	FCVAR_UNREGISTERED);
+	RegServerCmd("rp_item_map",			Cmd_ItemMaps,			"RP-ITEM",	FCVAR_UNREGISTERED);
 	
 	g_vConfigTueur = CreateConVar("rp_config_kidnapping", "171,172,173,174,182,183-184");
 	
@@ -625,6 +625,11 @@ void SetContratFail(int client, bool time = false) { // time = retro-compatibili
 			rp_SetClientInt(target, i_Bank, rp_GetClientInt(target, i_Bank) + prix - (RoundFloat((float(prix) / 100.0) * float(reduction)) / 2));
 			rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) - (prix - RoundFloat( (float(prix) / 100.0) * float(reduction))) / 2);
 			rp_SetJobCapital(41, rp_GetJobCapital(41) - (prix / 2));
+			
+			Call_StartForward(rp_GetForwardHandle(client, RP_OnPlayerSell));
+			Call_PushCell(client);
+			Call_PushCell(- (prix - RoundFloat( (float(prix) / 100.0) * float(reduction))) / 2);
+			Call_Finish();
 		}
 		else {
 			CPrintToChat(client, "{lightblue}[TSX-RP]{default} Votre employeur s'est déconnecté, vous ne le remboursez pas.");
@@ -891,43 +896,6 @@ public Action fwdFrameKidnap(int client) {
 	OpenKidnappingMenu(client);
 }
 // ----------------------------------------------------------------------------
-public Action Cmd_ItemCamera(int args) {
-	#if defined DEBUG
-	PrintToServer("Cmd_ItemCamera");
-	#endif
-	char arg1[12];
-	GetCmdArg(1, arg1, 11);
-	
-	int client = StringToInt(arg1);
-	int target = GetClientAimTarget(client, false);
-	
-
-	int item_id = GetCmdArgInt(args);
-	
-	if( !IsValidClient(target) ) {
-		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous devez vous rapprocher pour lui coller une caméra."); // Pas sûr pour les 2 p
-		ITEM_CANCEL(client, item_id);
-		return Plugin_Handled;
-	}
-	
-	
-	if( rp_GetClientInt(client, i_Camera) > 0 ) {
-		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Impossible de mettre une caméra sur ce joueur pour le moment.");
-		ITEM_CANCEL(client, item_id);
-		return Plugin_Handled;
-	}
-	
-	rp_SetClientInt(client, i_Camera, target);
-	
-	SetEntPropEnt(client, Prop_Send, "m_hViewEntity", target);
-	SetEntProp(client, Prop_Send, "m_bShouldDrawPlayerWhileUsingViewEntity", 1);
-	SetEntProp(client, Prop_Send, "m_iDefaultFOV", 130);
-	
-	if( rp_GetClientInt(client, i_ThirdPerson) == 1 ) {
-		ClientCommand(client, "firstperson");
-	}
-	return Plugin_Handled;
-}
 public Action Cmd_ItemCryptage(int args) {
 	#if defined DEBUG
 	PrintToServer("Cmd_ItemCryptage");
@@ -1159,7 +1127,7 @@ public Action fwdWeapon(int victim, int attacker, float &damage, int wepID, floa
 				rp_SetClientFloat(victim, fl_FrozenTime, GetGameTime() + 1.5);
 				rp_SetClientFloat(victim, fl_TazerTime, GetGameTime() + 7.5);
 				
-				if(!rp_GetClientBool(victim, b_ChiruYeux))
+				if(!rp_GetClientBool(victim, ch_Yeux))
 					ServerCommand("sm_effect_flash %d 1.5 180", victim);
 						
 				if( rp_GetClientInt(attacker,i_Protect_Last) == victim ) {
@@ -1194,3 +1162,16 @@ public Action fwdWeapon(int victim, int attacker, float &damage, int wepID, floa
 		return Plugin_Changed;
 	return Plugin_Continue;
 }
+public Action Cmd_ItemMaps(int args) {
+	#if defined DEBUG
+	PrintToServer("Cmd_ItemMaps");
+	#endif
+	
+	int client = GetCmdArgInt(1);
+	rp_SetClientBool(client, b_Map, true);
+	rp_HookEvent(client, RP_OnAssurance,	fwdAssurance2);
+}
+public Action fwdAssurance2(int client, int& amount) {
+		amount += 1000;
+}
+

@@ -41,6 +41,11 @@ int g_iQ9, g_iQ12, g_iQ14, g_iClientDoingQ[65];
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
 	
+	for (int j = 1; j <= MaxClients; j++)
+		if( IsValidClient(j) )
+			OnClientPostAdminCheck(j);
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -60,11 +65,6 @@ public void OnPluginStart() {
 	rp_QuestAddStep(g_iQuest, i++, QUEST_NULL,	Q12_Frame,	QUEST_NULL,	QUEST_NULL);
 	rp_QuestAddStep(g_iQuest, i++, QUEST_NULL,	Q13_Frame,	QUEST_NULL,	QUEST_NULL);
 	rp_QuestAddStep(g_iQuest, i++, QUEST_NULL,	Q14_Frame,	QUEST_NULL,	QUEST_NULL);
-	
-	
-	for (int j = 1; j <= MaxClients; j++)
-		if( IsValidClient(j) )
-			OnClientPostAdminCheck(j);
 }
 public Action Cmd_Reload(int args) {
 	char name[64];
@@ -587,7 +587,7 @@ public int MenuSelectParrain(Handle menu, MenuAction action, int client, int par
 }
 
 public void Q14_Frame(int objectiveID, int client) {
-	static int job[] =  { 16, 25, 35, 55, 65, 76, 85, 116, 135, 176, 186, 195, 216, 226 };
+	static int job[] =  { 16, 25, 35, 55, 65, 76, 87, 116, 135, 176, 195, 216, 226 };
 	
 	if( rp_ClientCanDrawPanel(client) ) {
 		g_iQ14 = objectiveID;

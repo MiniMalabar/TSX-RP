@@ -59,13 +59,13 @@ char g_szJailRaison[][][128] = {
 	{ "Garde à vue",						"12", 	"12",	"0"},
 	{ "Meurtre",							"-1", 	"-1",	"-1"},
 	{ "Agression physique",					"1", 	"6",	"250"},
-	{ "Intrusion propriété privée",		"0", 	"3",	"100"},
+	{ "Intrusion propriété privée",			"0", 	"3",	"100"},
 	{ "Vol, tentative de vol",				"0", 	"3",	"50"},
 	{ "Fuite, refus d'obtempérer",			"0", 	"6",	"200"},
 	{ "Insultes, Irrespect",				"1", 	"6",	"250"},
 	{ "Trafique illégal",					"0", 	"6",	"100"},
 	{ "Nuisance sonore",					"0", 	"6",	"100"},
-	{ "Tir dans la rue",					"0", 	"6",	"50"},
+	{ "Tir dans la rue",					"0", 	"6",	"100"},
 	{ "Conduite dangereuse",				"0", 	"6",	"150"},
 	{ "Mutinerie, évasion",					"-2", 	"-2",	"50"}	
 };
@@ -92,8 +92,7 @@ char g_szTribunal_DATA[65][tribunal_max][64];
 DataPack g_hBuyMenu;
 
 //forward RP_OnClientTazedItem(int attacker, int reward);
-Handle g_hForward_RP_OnClientTazedItem;
-Handle g_hForward_RP_OnClientSendJail;
+Handle g_hForward_RP_OnClientTazedItem, g_hForward_RP_OnClientSendJail, g_hForward_RP_OnMarchePolice;
 bool doRP_OnClientSendJail(int client, int target) {
 	Action a;
 	Call_StartForward(g_hForward_RP_OnClientSendJail);
@@ -110,6 +109,14 @@ void doRP_OnClientTazedItem(int client, int reward) {
 	Call_PushCell(reward);
 	Call_Finish();
 }
+void doRP_RP_OnMarchePolice(int client, int prix, int realPrice) {
+	
+	Call_StartForward(g_hForward_RP_OnMarchePolice);
+	Call_PushCell(client);
+	Call_PushCell(prix);
+	Call_PushCell(realPrice);
+	Call_Finish();
+}
 
 // ----------------------------------------------------------------------------
 public Action Cmd_Reload(int args) {
@@ -120,19 +127,14 @@ public Action Cmd_Reload(int args) {
 }
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	g_hForward_RP_OnClientTazedItem = CreateGlobalForward("RP_OnClientTazedItem", ET_Event, Param_Cell, Param_Cell);
-	g_hForward_RP_OnClientSendJail = CreateGlobalForward("RP_OnClientSendJail", ET_Event, Param_Cell, Param_Cell);
-	
-	
-	g_hBuyMenu = rp_WeaponMenu_Create();
-	
-	
 	
 	RegConsoleCmd("sm_jugement",	Cmd_Jugement);
 	
 	RegServerCmd("rp_item_mandat", 		Cmd_ItemPickLock,		"RP-ITEM",	FCVAR_UNREGISTERED);
 	RegServerCmd("rp_item_ratio",		Cmd_ItemRatio,			"RP-ITEM",	FCVAR_UNREGISTERED);
 	RegServerCmd("rp_SendToJail",		Cmd_SendToJail,			"RP-ITEM",	FCVAR_UNREGISTERED);
+	RegServerCmd("rp_GetStoreWeapon",	Cmd_GetStoreWeapon,		"RP-ITEM",	FCVAR_UNREGISTERED);
+	
 
 	HookEvent("bullet_impact", Event_Bullet_Impact);
 	HookEvent("weapon_fire", Event_Weapon_Fire);
@@ -141,8 +143,21 @@ public void OnPluginStart() {
 		if( IsValidClient(i) )
 			OnClientPostAdminCheck(i);
 }
+public void OnAllPluginsLoaded() {
+	g_hBuyMenu = rp_WeaponMenu_Create();
+}
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
+	g_hForward_RP_OnClientTazedItem = CreateGlobalForward("RP_OnClientTazedItem", ET_Event, Param_Cell, Param_Cell);
+	g_hForward_RP_OnClientSendJail = CreateGlobalForward("RP_OnClientSendJail", ET_Event, Param_Cell, Param_Cell);
+	g_hForward_RP_OnMarchePolice = CreateGlobalForward("RP_OnMarchePolice", ET_Event, Param_Cell, Param_Cell, Param_Cell);
+	
+}
 public void OnPluginEnd() {
-	rp_WeaponMenu_Clear(g_hBuyMenu);
+	if( g_hBuyMenu )
+		rp_WeaponMenu_Clear(g_hBuyMenu);
+}
+public Action Cmd_GetStoreWeapon(int args) {
+	Cmd_BuyWeapon(GetCmdArgInt(1), true);
 }
 public Action Cmd_SendToJail(int args) {
 	#if defined DEBUG
@@ -362,6 +377,11 @@ public Action Cmd_Cop(int client) {
 	}
 	if( !rp_GetClientBool(client, b_MaySteal) || rp_GetClientBool(client, b_Stealing) ) { // Pendant un vol
 		ACCESS_DENIED(client);
+	}
+	
+	if(rp_GetClientInt(client, i_KillingSpread)>= 1 && GetClientTeam(client) == CS_TEAM_T) {
+		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous devez attendre, votre dernier meurtre était il y a moins de 6 minutes.");
+		return Plugin_Handled;
 	}
 	
 	float origin[3], vecAngles[3];
@@ -627,8 +647,14 @@ public Action Cmd_Tazer(int client) {
 			LogToGame("[TSX-RP] [TAZER] %L a supprimé un plant de %L dans %s", client, owner, tmp);
 			
 			reward = 100;
-			if( rp_GetBuildingData(target, BD_started)+120 < GetTime() ) {
-				reward = 1000;
+			if( (rp_GetBuildingData(target, BD_started)+120 < GetTime() && rp_GetBuildingData(target, BD_FromBuild) == 0) ||
+				(rp_GetBuildingData(target, BD_started)+300 < GetTime() && rp_GetBuildingData(target, BD_FromBuild) == 1) ) {
+				
+				if( rp_GetBuildingData(target, BD_FromBuild) == 1 )
+					reward += 50 * rp_GetBuildingData(target, BD_count);
+				else
+					reward += 200 * rp_GetBuildingData(target, BD_count);
+				
 				if( owner != client )
 					doRP_OnClientTazedItem(client, reward);
 			}
@@ -1121,7 +1147,7 @@ public Action Cmd_Jugement(int client, int args) {
 
 				if(amende > maxAmount){
 					CPrintToChat(client, "{lightblue}[TSX-RP]{default} L'amende excède le montant maximum autorisé.");
-					String_GetRandom(random, sizeof(random), sizeof(random) - 1);
+					String_GetRandom(random, sizeof(random), sizeof(random) - 1, "23456789abcdefg");
 
 					Format(g_szTribunal_DATA[client][tribunal_code], 63, random);
 					Format(g_szTribunal_DATA[client][tribunal_option], 63, "unknown");
@@ -1143,7 +1169,7 @@ public Action Cmd_Jugement(int client, int args) {
 				if(playermoney == -1){
 					PrintToServer("Erreur SQL: Impossible de relever l'argent du joueur (Amende jugement)");
 					CPrintToChat(client, "{lightblue}[TSX-RP]{default} Erreur: Impossible de relever l'argent du joueur.", playermoney);
-					String_GetRandom(random, sizeof(random), sizeof(random) - 1);
+					String_GetRandom(random, sizeof(random), sizeof(random) - 1, "23456789abcdefg");
 
 					Format(g_szTribunal_DATA[client][tribunal_code], 63, random);
 					Format(g_szTribunal_DATA[client][tribunal_option], 63, "unknown");
@@ -1152,7 +1178,7 @@ public Action Cmd_Jugement(int client, int args) {
 				}
 				else if(amende > playermoney){
 					CPrintToChat(client, "{lightblue}[TSX-RP]{default} Le joueur n'a que %i$, le jugement a été annulé.", playermoney);
-					String_GetRandom(random, sizeof(random), sizeof(random) - 1);
+					String_GetRandom(random, sizeof(random), sizeof(random) - 1, "23456789abcdefg");
 
 					Format(g_szTribunal_DATA[client][tribunal_code], 63, random);
 					Format(g_szTribunal_DATA[client][tribunal_option], 63, "unknown");
@@ -1220,7 +1246,7 @@ public Action Cmd_Jugement(int client, int args) {
 		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Le code est incorrect, le jugement a été annulé.");
 	}
 	
-	String_GetRandom(random, sizeof(random), sizeof(random) - 1);
+	String_GetRandom(random, sizeof(random), sizeof(random) - 1, "23456789abcdefg");
 	
 	Format(g_szTribunal_DATA[client][tribunal_code], 63, random);
 	Format(g_szTribunal_DATA[client][tribunal_option], 63, "unknown");
@@ -1615,7 +1641,7 @@ public int MenuTribunal_Apply(Handle p_hItemMenu, MenuAction p_oAction, int clie
 		ExplodeString(buff_options, " ", options, sizeof(options), sizeof(options[]));
 		
 		char random[6];
-		String_GetRandom(random, sizeof(random), sizeof(random) - 1);
+		String_GetRandom(random, sizeof(random), sizeof(random) - 1, "23456789abcdefg");
 		
 		strcopy(g_szTribunal_DATA[client][tribunal_option], 63, options[0]);
 		strcopy(g_szTribunal_DATA[client][tribunal_steamid], 63, options[1]);
@@ -1649,7 +1675,7 @@ public int MenuTribunal(Handle p_hItemMenu, MenuAction p_oAction, int client, in
 			
 			char uniqID[64], szSteamID[64], szIP[64], szQuery[1024];
 			
-			String_GetRandom(uniqID, sizeof(uniqID), 32);
+			String_GetRandom(uniqID, sizeof(uniqID), 32, "23456789abcdefg");
 			GetClientAuthId(target, AuthId_Engine, szSteamID, sizeof(szSteamID), false);
 			GetClientIP(client, szIP, sizeof(szIP));
 			
@@ -2154,10 +2180,11 @@ void amendeCalculation(int client, int& amende) {
 	#if defined DEBUG
 	PrintToServer("amendeCalculation");
 	#endif
-	int current = rp_GetClientInt(client, i_Money) + rp_GetClientInt(client, i_Bank);
+	float ratio = float(rp_GetClientInt(client, i_Kill31Days)+1) / float(rp_GetClientInt(client, i_Death31Days)+1);
+	if( ratio < 0.25 )
+		ratio = 0.25;
 	
-	if( current > 10000 )
-		amende += (((current)-10000)/4000);	
+	amende =  RoundFloat(float(amende) * ratio);
 }
 int GetPerquizResp(int job_id) {
 	#if defined DEBUG
@@ -2205,8 +2232,6 @@ public int MenuPerquiz(Handle menu, MenuAction action, int client, int param2) {
 	if( action == MenuAction_Select ) {
 		char options[64];
 		GetMenuItem(menu, param2, options, 63);
-		
-		
 		int job_id = rp_GetZoneInt(rp_GetPlayerZone(rp_GetClientTarget(client)), zone_type_type);
 		
 		if( job_id <= 0 || job_id > 250 ) {
@@ -2216,7 +2241,10 @@ public int MenuPerquiz(Handle menu, MenuAction action, int client, int param2) {
 		
 		if( StrEqual(options, "start") ) {
 			g_iCancel[client] = 0;
-			start_perquiz(client, job_id);
+			if(rp_GetClientJobID(client) == 1)
+				start_perquiz(client, job_id);
+			else
+				begin_perquiz(client, job_id);
 		}
 		else if( StrEqual(options, "cancel") ) {
 			cancel_perquiz(client, job_id);
@@ -2264,14 +2292,20 @@ void begin_perquiz(int client, int job) {
 	rp_GetZoneData(JobToZoneID(job), zone_type_name, tmp, sizeof(tmp));
 	
 	PrintToChatPoliceJob(job, "{lightblue} ================================== {default}");
-	PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [POLICE]{default} Début d'une perquisition dans %s.", tmp);
-	LogToGame("[TSX-RP] [POLICE] La perquisition commence dans %s.", tmp);
+	if(rp_GetClientJobID(client) == 1){
+		PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [POLICE]{default} Début d'une perquisition dans %s.", tmp);
+		LogToGame("[TSX-RP] [POLICE] La perquisition commence dans %s.", tmp);
+		rp_SetJobCapital(1, rp_GetJobCapital(1) + 250);
+	}
+	else{
+		PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [JUSTICE]{default} Début d'une perquisition dans %s.", tmp);
+		LogToGame("[TSX-RP] [JUSTICE] %N débute une perquisition dans %s.", client, tmp);
+		rp_SetJobCapital(101, rp_GetJobCapital(101) + 250);
+	}
 	PrintToChatPoliceJob(job, "{lightblue} ================================== {default}");
 	
 	
 	rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + 500);
-	rp_SetJobCapital(1, rp_GetJobCapital(1) + 250);
-	
 }
 void end_perquiz(int client, int job) {
 	#if defined DEBUG
@@ -2281,13 +2315,19 @@ void end_perquiz(int client, int job) {
 	rp_GetZoneData(JobToZoneID(job), zone_type_name, tmp, sizeof(tmp));
 	
 	PrintToChatPoliceJob(job, "{lightblue} ================================== {default}");
-	PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [POLICE]{default} Fin de la perquisition dans %s.", tmp);
+	if(rp_GetClientJobID(client) == 1){
+		PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [POLICE]{default} Fin de la perquisition dans %s.", tmp);
+		rp_SetJobCapital(1, rp_GetJobCapital(1) + 500);
+	}
+	else{
+		PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [JUSTICE]{default} Fin de la perquisition dans %s.", tmp);
+		rp_SetJobCapital(101, rp_GetJobCapital(101) + 500);
+	}
 	LogToGame("[TSX-RP] [POLICE] %N a mis fin à la perquisition dans %s.",client, tmp);
 	
 	PrintToChatPoliceJob(job, "{lightblue} ================================== {default}");
 	
 	rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + 500);
-	rp_SetJobCapital(1, rp_GetJobCapital(1) + 500);
 	
 	char szQuery[1024], szSteamID[64];
 	GetClientAuthId(client, AuthId_Engine, szSteamID, sizeof(szSteamID), false);
@@ -2304,13 +2344,19 @@ void cancel_perquiz(int client, int job) {
 	rp_GetZoneData(JobToZoneID(job), zone_type_name, tmp, sizeof(tmp));
 	
 	PrintToChatPoliceJob(job, "{lightblue} ================================== {default}");
-	PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [POLICE]{default} Annulation de la perquisition dans %s.", tmp);
+	if(rp_GetClientJobID(client) == 1){
+		PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [POLICE]{default} Annulation de la perquisition dans %s.", tmp);
+		rp_SetJobCapital(1, rp_GetJobCapital(1) - 250);
+	}
+	else{
+		PrintToChatPoliceJob(job, "{lightblue}[TSX-RP] [JUSTICE]{default} Annulation de la perquisition dans %s.", tmp);
+		rp_SetJobCapital(101, rp_GetJobCapital(101) - 250);
+	}
 	LogToGame("[TSX-RP] [POLICE] %N a annulé la perquisition dans %s.",client, tmp);
 	
 	PrintToChatPoliceJob(job, "{lightblue} ================================== {default}");
 	
 	rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) - 500);
-	rp_SetJobCapital(1, rp_GetJobCapital(1) - 250);
 }
 public Action PerquizFrame(Handle timer, Handle dp) {
 	#if defined DEBUG
@@ -2872,13 +2918,13 @@ public Action fwdOnPlayerUse(int client) {
 	GetClientAbsOrigin(client, vecOrigin);
 	
 	if( GetVectorDistance(vecOrigin, view_as<float>({ 2550.8, 1663.1, -2015.96 })) < 40.0 ) {
-		Cmd_BuyWeapon(client);
+		Cmd_BuyWeapon(client, false);
 	}
 	return Plugin_Continue;
 }
-void Cmd_BuyWeapon(int client) {
-	int max = rp_WeaponMenu_GetMax(g_hBuyMenu);
-	int position = rp_WeaponMenu_GetPosition(g_hBuyMenu);
+void Cmd_BuyWeapon(int client, bool free) {
+	DataPackPos max = rp_WeaponMenu_GetMax(g_hBuyMenu);
+	DataPackPos position = rp_WeaponMenu_GetPosition(g_hBuyMenu);
 	char name[65], tmp[8], tmp2[129];
 	int data[BM_Max];
 	
@@ -2893,7 +2939,7 @@ void Cmd_BuyWeapon(int client) {
 	while( position < max ) {
 		
 		rp_WeaponMenu_Get(g_hBuyMenu, position, name, data);
-		Format(tmp, sizeof(tmp), "%d", position);
+		Format(tmp, sizeof(tmp), "%d %d", position, free);
 
 		if(data[BM_PvP] > 0)
 			Format(tmp2, sizeof(tmp2), "[PvP] ");
@@ -2917,7 +2963,8 @@ void Cmd_BuyWeapon(int client) {
 			case ball_type_nosteal       : Format(tmp2, sizeof(tmp2), "%s Anti-Vol", tmp2);
 			case ball_type_notk          : Format(tmp2, sizeof(tmp2), "%s Anti-TK", tmp2);
 		}
-		Format(tmp2, sizeof(tmp2), "%s pour %d$", tmp2, data[BM_Prix]);
+		
+		Format(tmp2, sizeof(tmp2), "%s pour %d$", tmp2, (free?0:data[BM_Prix]));
 		menu.AddItem(tmp, tmp2);
 		
 		position = rp_WeaponMenu_GetPosition(g_hBuyMenu);
@@ -2932,20 +2979,27 @@ public int Menu_BuyWeapon(Handle p_hMenu, MenuAction p_oAction, int client, int 
 	#endif
 	if (p_oAction == MenuAction_Select) {
 		
-		char szMenu[64];
+		char szMenu[64], buffer[2][32];
 		if( GetMenuItem(p_hMenu, p_iParam2, szMenu, sizeof(szMenu)) ) {
+			ExplodeString(szMenu, " ", buffer, sizeof(buffer), sizeof(buffer[]));
+			
 			char name[65];
 			int data[BM_Max];
-			int position = StringToInt(szMenu);
+			DataPackPos position = view_as<DataPackPos>(StringToInt(buffer[0]));
 			rp_WeaponMenu_Get(g_hBuyMenu, position, name, data);
 			
-			if( rp_GetClientInt(client, i_Bank) < data[BM_Prix] )
-				return 0;
 			float vecOrigin[3];
-			
 			GetClientAbsOrigin(client, vecOrigin);
 			
 			if( GetVectorDistance(vecOrigin, view_as<float>({ 2550.8, 1663.1, -2015.96 })) > 40.0 )
+				return 0;
+			
+			if( StringToInt(buffer[1]) == 1 ) {
+				rp_SetClientInt(client, i_LastVolAmount, 100+data[BM_Prix]); 
+				data[BM_Prix] = 0;
+			}
+			
+			if( rp_GetClientInt(client, i_Bank) < data[BM_Prix] )
 				return 0;
 			
 			Format(name, sizeof(name), "weapon_%s", name);			
@@ -2968,7 +3022,9 @@ public int Menu_BuyWeapon(Handle p_hMenu, MenuAction p_oAction, int client, int 
 			rp_SetJobCapital(101, RoundFloat(float(rp_GetJobCapital(101)) + float(data[BM_Prix]) * 0.25));
 			
 			rp_SetJobCapital(rnd, rp_GetJobCapital(rnd) - data[BM_Prix]);
-			LogToGame("[TSX-RP] [ITEM-VENDRE] %L a vendu 1 %s a %L", client, name, client);			
+			LogToGame("[TSX-RP] [ITEM-VENDRE] %L a vendu 1 %s a %L", client, name, client);
+			
+			doRP_RP_OnMarchePolice(client, data[BM_Prix], rp_GetClientInt(client, i_LastVolAmount)-100);
 		}
 	}
 	else if (p_oAction == MenuAction_End) {
@@ -3012,7 +3068,7 @@ void explainJail(int client, int jailReason, int cop) {
 		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous avez posé des plants de drogue, imprimante(s) à faux billet, ou demandé à quelqu'un de vous aider pour une mission. Cela est interdit.");
 	}
 	else if( StrContains(g_szJailRaison[jailReason][jail_raison], "Nuisance ") == 0 ) {
-		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous avez fait trop de bruit sur un lieu publique.");
+		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous avez fait trop de bruit sur un lieu public.");
 	}
 	else if( StrContains(g_szJailRaison[jailReason][jail_raison], "Tir dans ") == 0 ) {
 		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous avez tiré dans la rue ou sur un autre citoyen en présence du policier %N. Que vous ayez touché ou non votre cible, il est interdit de tirer dans la rue.", cop); 

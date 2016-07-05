@@ -30,8 +30,8 @@
 #define	QUEST_RESUME	"Arrêtez-le"
 
 public Plugin myinfo = {
-	name = "Quête: Un homme recherché", author = "KoSSoLaX",
-	description = "RolePlay - Quête Justice: Un homme très recherché",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Justice: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -39,7 +39,8 @@ int g_iQuest, g_iDuration[MAXPLAYERS + 1], g_iDoing[MAXPLAYERS + 1];
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -56,7 +57,7 @@ public Action Cmd_Reload(int args) {
 // ----------------------------------------------------------------------------
 public bool fwdCanStart(int client) {
 	int job = rp_GetClientInt(client, i_Job);
-	if( job == 107 || job == 108 || job == 109 )
+	if( (job == 107 || job == 108 || job == 107) || (job >= 1 && job <= 9))
 		return (playerMatch() >= 1);
 	
 	return false;

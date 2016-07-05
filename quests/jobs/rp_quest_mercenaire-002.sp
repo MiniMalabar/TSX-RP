@@ -31,8 +31,8 @@
 
 
 public Plugin myinfo = {
-	name = "Quête: Un coup de main pour la justice", author = "Leethium",
-	description = "RolePlay - Quête Mercenaire: Un coup de main pour la justice",
+	name = "Quête: "...QUEST_NAME, author = "Leethium",
+	description = "RolePlay - Quête Mercenaire: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -41,7 +41,8 @@ Handle g_hDoing;
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -77,7 +78,7 @@ public void Q1_Start(int objectiveID, int client) {
 	g_ObjectiveID = objectiveID;
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "La justice a besoin de vous,", ITEMDRAW_DISABLED);
 	menu.AddItem("", "une personne est actuellement recherchée.", ITEMDRAW_DISABLED);

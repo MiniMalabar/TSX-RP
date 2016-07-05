@@ -23,19 +23,23 @@
 #include <roleplay.inc>	// https://www.ts-x.eu
 
 //#define DEBUG
-#define QUEST_UNIQID	"police-002"
-#define	QUEST_NAME		"Surveillance renforcée"
+#define QUEST_UNIQID	"dealer-005"
+#define	QUEST_NAME		"Vandalisme des distributeurs"
 #define	QUEST_TYPE		quest_daily
-#define	QUEST_JOBID		1
-#define	QUEST_RESUME1	"Surveillez la prison"
+#define	QUEST_JOBID		81
+
+#define	METRO_PAIX		80
+#define METRO_STATION	81
+#define METRO_INNO		82
+#define MAX_ZONES		310
 
 public Plugin myinfo = {
 	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
-	description = "RolePlay - Quête Police: "...QUEST_NAME,
+	description = "RolePlay - Quête Mafia: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
-int g_iQuest, g_iDuration[MAXPLAYERS + 1];
+int g_iQuest, g_iDuration[MAXPLAYERS + 1], g_iStep[MAXPLAYERS + 1], g_iDoing[MAXPLAYERS + 1], g_iDoneDistrib[MAXPLAYERS + 1][MAX_ZONES];
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
@@ -46,7 +50,9 @@ public void OnAllPluginsLoaded() {
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
 	
 	int i;
-	rp_QuestAddStep(g_iQuest, i++,	Q1_Start,	Q1_Frame,	Q1_Abort,	Q1_Abort);	
+	rp_QuestAddStep(g_iQuest, i++,	Q1_Start,	Q1_Frame,	Q1_Abort,	QUEST_NULL);
+	rp_QuestAddStep(g_iQuest, i++,	Q2_Start,	Q1_Frame,	Q1_Abort,	QUEST_NULL);
+	rp_QuestAddStep(g_iQuest, i++,	Q2_Start,	Q1_Frame,	Q1_Abort,	Q2_End);
 }
 public Action Cmd_Reload(int args) {
 	char name[64];
@@ -58,65 +64,61 @@ public Action Cmd_Reload(int args) {
 public bool fwdCanStart(int client) {
 	if( rp_GetClientJobID(client) != QUEST_JOBID )
 		return false;
-	
-	for (int i = 1; i <= MaxClients; i++) {
-		if( !IsValidClient(i) )
-			continue;
-		if( rp_GetClientJobID(i) != QUEST_JOBID )
-			continue;
-		if( zoneJail(i) )
-			return false;
-	}
+		
 	return true;
+}
+public void OnClientPostAdminCheck(int client) {
+	g_iStep[client] = 0;
+}
+public void RP_OnClientPiedBiche(int client, int type) {
+	if( type == 2 && g_iDoing[client] > 0 && g_iDoneDistrib[client][rp_GetPlayerZone(client)] == 0) {
+		
+		g_iDoneDistrib[client][rp_GetPlayerZone(client)] = 1;
+		rp_QuestStepComplete(client, g_iDoing[client]);
+	}
 }
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quête: %s", QUEST_NAME);
+	menu.SetTitle("Quète: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Collègue, nous avons besoin que vous", ITEMDRAW_DISABLED);
-	menu.AddItem("", "surveillez la prison. Pendant les prochaines 24h.", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Nous t'offrons 35$ toutes les 10 minutes", ITEMDRAW_DISABLED);
-	menu.AddItem("", "passées à surveiller les prisonniers.", ITEMDRAW_DISABLED);
-	menu.AddItem("", "-----------------", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Attention, si tu t'absentes nous t'infligerons", ITEMDRAW_DISABLED);
-	menu.AddItem("", "une retenue sur ton salaire !", ITEMDRAW_DISABLED); 
+	menu.AddItem("", "Mon frère, Nous avons une mission pour toi.", ITEMDRAW_DISABLED);
+	menu.AddItem("", "Nous voulons faire plier les banquiers.", ITEMDRAW_DISABLED);
+	menu.AddItem("", "Pour ça, vandalise les distributeurs", ITEMDRAW_DISABLED);
+	menu.AddItem("", "présent dans les métros de la ville.", ITEMDRAW_DISABLED);
 	
 	menu.ExitButton = false;
 	menu.Display(client, 60);
 	
-	g_iDuration[client] = 24 * 60;
+	g_iDuration[client] = 12 * 60;
+	g_iStep[client] = 0;
+	g_iDoing[client] = objectiveID;
+	g_iDoneDistrib[client][METRO_STATION] = g_iDoneDistrib[client][METRO_PAIX] = g_iDoneDistrib[client][METRO_INNO] = 0;
 }
 public void Q1_Frame(int objectiveID, int client) {
 	
-	static bool wasAFK[65];
 	g_iDuration[client]--;
-	
-	if( zoneJail(client) ) {
-		
-		if( wasAFK[client] == false && rp_GetClientBool(client, b_IsAFK) ) {
-			int mnt = RoundToFloor(3.5 * 3.0 * 60.0);
-			rp_SetJobCapital(1, rp_GetJobCapital(1) + mnt);
-			rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) - mnt);
-		}
-		
-		wasAFK[client] = rp_GetClientBool(client, b_IsAFK);
-		if( !wasAFK[client] ) {
-			int cap = rp_GetRandomCapital(1);
-			int mnt = Math_GetRandomInt(3, 4);
-			rp_SetJobCapital(cap, rp_GetJobCapital(cap) - mnt);
-			rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + mnt);
-		}
-	}
-	
 	if( g_iDuration[client] <= 0 ) {
-		rp_QuestStepComplete(client, objectiveID);
+		rp_QuestStepFail(client, objectiveID);
 	}
 	else {
-		PrintHintText(client, "<b>Quête</b>: %s\n<b>Temps restant</b>: %dsec\n<b>Objectif</b>: %s", QUEST_NAME, g_iDuration[client], QUEST_RESUME1);
+		PrintHintText(client, "<b>Quête</b>: %s\n<b>Temps restant</b>: %dsec\n<b>Objectif</b>: Vandaliser les métros: %d/3", QUEST_NAME, g_iDuration[client], g_iStep[client]);
 	}
 }
+public void Q2_Start(int objectiveID, int client) {
+	g_iDoing[client] = objectiveID;
+	g_iDuration[client] = 12 * 60;
+	g_iStep[client]++;
+}
+public void Q2_End(int objectiveID, int client) {
+	Q1_Abort(objectiveID, client);
+	
+	int cap = rp_GetRandomCapital(81);
+	rp_SetJobCapital(cap, rp_GetJobCapital(cap) - 2500);
+	rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + 2500);
+}
 public void Q1_Abort(int objectiveID, int client) {
+	g_iDoing[client] = 0;
 	PrintHintText(client, "<b>Quête</b>: %s\nLa quête est terminée.", QUEST_NAME);
 }
 // ----------------------------------------------------------------------------
@@ -129,10 +131,4 @@ public int MenuNothing(Handle menu, MenuAction action, int client, int param2) {
 		if( menu != INVALID_HANDLE )
 			CloseHandle(menu);
 	}
-}
-bool zoneJail(int client) {
-	int zone = rp_GetPlayerZone(client);
-	if( zone == 13 || zone == 198 || zone == 221 )
-		return true;
-	return false;
 }

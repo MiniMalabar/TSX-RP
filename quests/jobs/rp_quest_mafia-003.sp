@@ -32,8 +32,8 @@
 #define	MAX_ZONES		300
 
 public Plugin myinfo = {
-	name = "Quête: Documents secrets", author = "KoSSoLaX",
-	description = "RolePlay - Quête Mafia: Documents secrets",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Mafia: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -41,7 +41,8 @@ int g_iQuest, g_iDuration[MAXPLAYERS + 1], g_iGoing[MAXPLAYERS + 1];
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -66,7 +67,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Mon frère, Nous avons besoin de toi.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Des documents très important se trouvent", ITEMDRAW_DISABLED);
@@ -109,7 +110,7 @@ public void Q1_Frame(int objectiveID, int client) {
 public void Q2_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Tu as les documents !", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Rapporte les nous au plus vite à la planque !", ITEMDRAW_DISABLED);
@@ -152,6 +153,7 @@ public void Q2_End(int objectiveID, int client) {
 	int cap = rp_GetRandomCapital(91);
 	rp_SetJobCapital(cap, rp_GetJobCapital(cap) - 2500);
 	rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + 2500);
+	rp_SetJobCapital(91, rp_GetJobCapital(91) + 250);
 }
 
 

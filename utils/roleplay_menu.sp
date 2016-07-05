@@ -15,6 +15,7 @@
 #include <smlib>
 #include <colors_csgo>
 #include <basecomm>
+#include <topmenus>
 
 #define __LAST_REV__ 		"v:0.1.0"
 
@@ -27,6 +28,8 @@ float g_flPressUse[MAXPLAYERS + 1];
 bool g_bPressedUse[MAXPLAYERS + 1];
 bool g_bClosed[MAXPLAYERS + 1];
 bool g_bInsideMenu[MAXPLAYERS + 1];
+TopMenu g_hHelpMenu;
+TopMenuObject obj;
 
 public Plugin myinfo = {
 	name = "Utils: Menu", author = "KoSSoLaX",
@@ -37,6 +40,14 @@ public void OnPluginStart() {
 	for (int i = 1; i <= MaxClients; i++)
 		if( IsValidClient(i) )
 			OnClientPostAdminCheck(i);
+	
+	char file[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, file, sizeof(file), "configs/help.cfg");
+	KeyValues kv = CreateKeyValues("root");
+	kv.ImportFromFile(file);
+	g_hHelpMenu = new TopMenu (Menu_HELP);
+	obj = g_hHelpMenu.AddCategory("Besoin d'aide?", Menu_HELP);
+	BrowseKeyValues(kv, obj);
 }
 public void OnClientPostAdminCheck(int client) {
 	g_flPressUse[client] = -1.0;
@@ -48,6 +59,10 @@ public void OnClientPostAdminCheck(int client) {
 public Action fwdCommand(int client, char[] command, char[] arg) {
 	if( StrEqual(command, "rpmenu") || StrEqual(command, "menu") ) {
 		openMenu(client);
+		return Plugin_Handled;
+	}
+	if( StrEqual(command, "taide") ) {
+		g_hHelpMenu.Display(client, TopMenuPosition_Start); 
 		return Plugin_Handled;
 	}
 	return Plugin_Continue;
@@ -170,5 +185,42 @@ public int menuOpenMenu(Handle hItem, MenuAction oAction, int client, int param)
 	}
 	else if (oAction == MenuAction_Cancel ) {
 		g_bInsideMenu[client] = false;
+	}
+}
+void BrowseKeyValues(KeyValues kv, TopMenuObject TOP) {
+	char tmp[255], tmp2[255];
+	int i;
+	
+	do {
+ 		kv.GetSectionName(tmp, sizeof(tmp));
+ 		
+		if (kv.GotoFirstSubKey(true)) {
+			kv.GetSectionName(tmp, sizeof(tmp));
+			PrintToChatAll(tmp);
+			BrowseKeyValues(kv, g_hHelpMenu.AddCategory(tmp, Menu_HELP));
+			kv.GoBack();
+		}
+		else {
+			kv.GetSectionName(tmp, sizeof(tmp));
+			kv.GetSectionSymbol(i);
+			Format(tmp, sizeof(tmp), "%s_%d", tmp, i);
+			
+			kv.GetString(NULL_STRING, tmp2, sizeof(tmp2));
+			Format(tmp, sizeof(tmp), "%s_%d_%d", tmp, i, kv.GetNum(NULL_STRING, 0));
+			g_hHelpMenu.AddItem(tmp, Menu_HELP, TOP, "", 0, tmp2);
+		}
+	} while (kv.GotoNextKey(false));
+}
+public void Menu_HELP(Handle topmenu, TopMenuAction action, TopMenuObject topobj_id, int param, char[] buffer, int maxlength) {
+	PrintToChatAll("%d", topobj_id);
+	if (action == TopMenuAction_DisplayTitle || action == TopMenuAction_DisplayOption) {
+		if( topobj_id == INVALID_TOPMENUOBJECT ) 
+			Format(buffer, maxlength, "Besoin d'aide?");
+		else
+			GetTopMenuObjName(topmenu, topobj_id, buffer, maxlength);
+//			GetTopMenuInfoString(topmenu, topobj_id, buffer, maxlength);
+	}
+	else if (action == TopMenuAction_SelectOption) {
+		g_hHelpMenu.Display(param, TopMenuPosition_Start);
 	}
 }

@@ -31,8 +31,8 @@
 #define QUEST_ITEM      236
 
 public Plugin myinfo =  {
-	name = "Quête: Collecte des matières premières", author = "KoSSoLaX", 
-	description = "RolePlay - Quête 18th/dealer: Collecte des matières premières", 
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX", 
+	description = "RolePlay - Quête Vente: "...QUEST_NAME, 
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -48,7 +48,8 @@ float g_flLocation[5][3] =  {
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if (g_iQuest == -1)
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -84,7 +85,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Bonjour collègue, on a de nouveaux projets pour toi.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "On a 5 colis à récupérer en ville. ", ITEMDRAW_DISABLED);
@@ -132,7 +133,7 @@ public void Q1_Frame(int objectiveID, int client) {
 public void Q2_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Tu l'as ! Va chercher le colis suivant.", ITEMDRAW_DISABLED);
 	
@@ -165,7 +166,7 @@ public void Q2_Frame(int objectiveID, int client) {
 public void Q3_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Bien joué !", ITEMDRAW_DISABLED);
 	if ( rp_GetClientJobID(client) == 61 ) { //Exception pour les IMMO qui n'ont plus de planque officielle
@@ -207,7 +208,7 @@ public void Q3_End(int objectiveID, int client) {
 	
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Votre chef vous remercie pour votre rapidité d'action", ITEMDRAW_DISABLED);
 	menu.AddItem("", "et vous offre : [PvP] AK-47.", ITEMDRAW_DISABLED);

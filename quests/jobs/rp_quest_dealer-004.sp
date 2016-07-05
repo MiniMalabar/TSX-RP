@@ -23,19 +23,20 @@
 #include <roleplay.inc>	// https://www.ts-x.eu
 
 //#define DEBUG
-#define QUEST_UNIQID	"tech-001"
-#define	QUEST_NAME		"Sous écoute"
+#define QUEST_UNIQID	"dealer-004"
+#define	QUEST_NAME		"Razzia"
 #define	QUEST_TYPE		quest_daily
-#define	QUEST_JOBID		221
-#define	QUEST_RESUME	"Retirer les mouchards"
+#define	QUEST_JOBID		81
+#define	QUEST_RESUME	""
+
 
 public Plugin myinfo = {
 	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
-	description = "RolePlay - Quête Technicien: "...QUEST_NAME,
+	description = "RolePlay - Quête Dealer: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
-int g_iQuest, g_iDuration[MAXPLAYERS + 1], g_iCurrent[MAXPLAYERS+1], g_iMarked[MAXPLAYERS + 1][64];
+int g_iQuest, g_iDoing[MAXPLAYERS + 1], g_iDuration[MAXPLAYERS + 1], g_iCount[MAXPLAYERS + 1];
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
@@ -47,6 +48,7 @@ public void OnAllPluginsLoaded() {
 	
 	int i;
 	rp_QuestAddStep(g_iQuest, i++,	Q1_Start,	Q1_Frame,	Q1_Abort,	Q1_Done);
+	
 }
 public Action Cmd_Reload(int args) {
 	char name[64];
@@ -59,56 +61,95 @@ public bool fwdCanStart(int client) {
 	if( rp_GetClientJobID(client) != QUEST_JOBID )
 		return false;
 	
-	return true;
+	int count = 0;
+	char tmp[64];
+	for (int i = MaxClients; i < 2048; i++) {
+		if( !IsValidEdict(i) || !IsValidEntity(i) )
+			continue;
+		
+		GetEdictClassname(i, tmp, sizeof(tmp));
+		
+		if( StrContains(tmp, "weapon_") == 0 && !StrEqual(tmp, "weapon_knife") ) {
+			count++;
+		}
+		
+		
+	}
+	
+	return (count>=10);
 }
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
 	menu.SetTitle("Quête: %s", QUEST_NAME);
-	menu.AddItem("", "Interlocuteur anonyme :-", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Mec! On a besoin de toi au plus vite!", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Notre contact nous informe que la police", ITEMDRAW_DISABLED);
-	menu.AddItem("", "a dissimulé des mouchards sur tous les", ITEMDRAW_DISABLED);
-	menu.AddItem("", "téléphones de la ville.", ITEMDRAW_DISABLED);
+	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
+	menu.AddItem("", "Hey gros, il est temps d'éliminer la concurrence", ITEMDRAW_DISABLED);
 	menu.AddItem("", "-----------------", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Tu as 12 heures pour tous les arracher", ITEMDRAW_DISABLED);	
+	menu.AddItem("", "Tu as 12 heures pour voler le marché d'arme", ITEMDRAW_DISABLED);
+	menu.AddItem("", "de la police, ou pour voler le marché noir", ITEMDRAW_DISABLED);
+	menu.AddItem("", "de la mafia ou encore pour revendre des armes", ITEMDRAW_DISABLED);
+	menu.AddItem("", "au marché noir des dealers.", ITEMDRAW_DISABLED);
 	
 	menu.ExitButton = false;
 	menu.Display(client, 60);
 	
 	g_iDuration[client] = 12 * 60;
+	g_iDoing[client] = true;
+	rp_SetClientInt(client, i_Disposed, rp_GetClientInt(client, i_Disposed) + 1);
+	rp_HookEvent(client, RP_OnResellWeapon, fwdResellWeapon);
 }
 public void Q1_Frame(int objectiveID, int client) {
 	g_iDuration[client]--;
-	int count = getMaxPhone();
-	float dst = 999999999.9;
-	int target = getNearestPhone(client, dst);
 	
-	if( target > 0 && dst < 48.0 ) {
-		g_iMarked[client][g_iCurrent[client]++] = target;
-	}
-	else if( g_iCurrent[client] >= count ) {
-		rp_QuestStepComplete(client, objectiveID);
-	}
-	else if( g_iDuration[client] <= 0 ) {
+	if( g_iDuration[client] <= 0 ) {
 		rp_QuestStepFail(client, objectiveID);
 	}
+	else if( g_iCount[client] >= 10 ) {
+		rp_QuestStepComplete(client, objectiveID);
+	}
 	else {
-		if( target > 0 )
-			rp_Effect_BeamBox(client, target, NULL_VECTOR, 255, 255, 255);
-		
-		PrintHintText(client, "<b>Quête</b>: %s\n<b>Temps restant</b>: %dsec\n<b>Objectif</b>: %s %d/%d", QUEST_NAME, g_iDuration[client], QUEST_RESUME, g_iCurrent[client], count);
+		PrintHintText(client, "<b>Quête</b>: %s\n<b>Temps restant</b>: %dsec\n<b>Objectif</b>: %s %d/10", QUEST_NAME, g_iDuration[client], QUEST_RESUME, g_iCount[client]);
 	}
 }
 public void Q1_Abort(int objectiveID, int client) {
 	PrintHintText(client, "<b>Quête</b>: %s\nLa quête est terminée.", QUEST_NAME);
+	g_iDoing[client] = false;
+}
+
+public Action fwdResellWeapon(int client, int weaponID, int realPrice) {
+
+	int cap = rp_GetRandomCapital(QUEST_JOBID);
+	rp_SetJobCapital(cap, rp_GetJobCapital(cap) - realPrice);
+	rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + realPrice);
+	rp_SetClientInt(client, i_Disposed, rp_GetClientInt(client, i_Disposed) + 1);
+	g_iCount[client]++;
+}
+public void RP_OnMarcheNoireMafia(int client, int target, int victim, int itemID, int prix) {
+	
+	if( g_iDoing[client] && victim != client && prix == 0 ) {
+		
+		int realPrice = rp_GetItemInt(itemID, item_type_prix) / 2;
+		int cap = rp_GetRandomCapital(QUEST_JOBID);
+		rp_SetJobCapital(cap, rp_GetJobCapital(cap) - realPrice);
+		rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + realPrice);
+	
+		g_iCount[client]++;
+	}
+}
+public void RP_OnMarchePolice(int client, int prix, int realPrice) {
+	if( g_iDoing[client] && prix == 0 ) {
+		
+		int cap = rp_GetRandomCapital(QUEST_JOBID);
+		rp_SetJobCapital(cap, rp_GetJobCapital(cap) - realPrice);
+		rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + realPrice);
+		g_iCount[client]++;
+	}
 }
 public void Q1_Done(int objectiveID, int client) {
-	PrintHintText(client, "<b>Quête</b>: %s\nLa quête est terminée.", QUEST_NAME);
+	Q1_Abort(objectiveID, client);
 	
-	int cap = rp_GetRandomCapital(221);
-	rp_SetJobCapital(cap, rp_GetJobCapital(cap) - 5000);
-	rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + 5000);
+	
+	
 }
 // ----------------------------------------------------------------------------
 public int MenuNothing(Handle menu, MenuAction action, int client, int param2) {
@@ -120,56 +161,4 @@ public int MenuNothing(Handle menu, MenuAction action, int client, int param2) {
 		if( menu != INVALID_HANDLE )
 			CloseHandle(menu);
 	}
-}
-int getMaxPhone() {
-	static int lastRes, lastTime;
-	if( lastTime > GetTime() )
-		return lastRes;
-	
-	lastRes = 0;
-	char classname[64];
-	
-	for (int i = MaxClients; i <= 2048; i++) {
-		if( !IsValidEdict(i) || !IsValidEntity(i) )
-			continue;
-		
-		GetEdictClassname(i, classname, sizeof(classname));
-		if( StrContains(classname, "rp_phone") == 0)
-			lastRes++;
-	}
-	
-	lastTime = GetTime() + 30;
-	return lastRes;
-}
-int getNearestPhone(int client, float& nearest) {
-	int ID;
-	float src[3], dst[3], tmp;
-	char classname[64];
-	bool skip;
-	
-	GetClientAbsOrigin(client, src);
-	
-	for (int i = MaxClients; i <= 2048; i++) {
-		if( !IsValidEdict(i) || !IsValidEntity(i) )
-			continue;
-		
-		GetEdictClassname(i, classname, sizeof(classname));
-		if( StrContains(classname, "rp_phone") == 0) {
-			skip = false;
-			for (int j = 0; j <= g_iCurrent[client]; j++) {
-				if( g_iMarked[client][j] == i )
-					skip = true;
-			}
-			if( skip )
-				continue;
-			
-			Entity_GetAbsOrigin(i, dst);
-			tmp = GetVectorDistance(src, dst);
-			if( tmp < nearest ) {
-				nearest = tmp;
-				ID = i;
-			}
-		}
-	}
-	return ID;
 }

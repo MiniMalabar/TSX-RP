@@ -30,7 +30,7 @@
 #define ITEM_KITCROCHTAGE	2
 #define ITEM_KITEXPLOSIF	3
 #define MARCHE_NOIR			view_as<float>({-144.55,520.1,-2119.96})
-#define MARCHE_PERCENT		40
+#define MARCHE_PERCENT		50
 
 
 // TODO: Repensé le /vol pour fusionner doublon.
@@ -41,13 +41,15 @@ public Plugin myinfo = {
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
+int g_iLastDoor[65][3];
 int g_iDoorDefine_LOCKER[2049];
-float g_flAppartProtection[110];
-Handle g_hForward_RP_OnClientStealItem, g_hForward_RP_OnClientWeaponPick, g_vCapture;
+float g_flAppartProtection[200];
+Handle g_hForward_RP_OnClientStealItem, g_hForward_RP_OnClientWeaponPick, g_hForward_RP_OnMarcheNoireMafia, g_vCapture;
 int g_cBeam;
 DataPack g_hBuyMenu;
 enum IM_Int {
 	IM_Owner,
+	IM_StealFrom,
 	IM_ItemID,
 	IM_Prix,
 	IM_Max
@@ -68,6 +70,16 @@ void doRP_OnClientWeaponPick(int client, int type) {
 	Call_PushCell(type);
 	Call_Finish();
 }
+void doRP_RP_OnMarcheNoireMafia(int client, int target, int victim, int itemID, int prix) {
+	
+	Call_StartForward(g_hForward_RP_OnMarcheNoireMafia);
+	Call_PushCell(client);
+	Call_PushCell(target);
+	Call_PushCell(victim);
+	Call_PushCell(itemID);
+	Call_PushCell(prix);
+	Call_Finish();
+}
 // ----------------------------------------------------------------------------
 public Action Cmd_Reload(int args) {
 	char name[64];
@@ -84,18 +96,25 @@ public void OnPluginStart() {
 	RegServerCmd("rp_item_doorDefine",	Cmd_ItemDoorDefine,		"RP-ITEM",	FCVAR_UNREGISTERED);
 	RegServerCmd("rp_item_doorprotect", Cmd_ItemDoorProtect,	"RP-ITEM",	FCVAR_UNREGISTERED);
 	
-	g_hForward_RP_OnClientStealItem = CreateGlobalForward("RP_CanClientStealItem", ET_Event, Param_Cell, Param_Cell);
-	g_hForward_RP_OnClientWeaponPick = CreateGlobalForward("RP_OnClientWeaponPick", ET_Event, Param_Cell, Param_Cell);
+	RegServerCmd("rp_GetStoreItem",	Cmd_GetStoreItem,		"RP-ITEM",	FCVAR_UNREGISTERED);
 	
 	g_hBuyMenu = new DataPack();
 	g_hBuyMenu.WriteCell(0);
-	int pos = g_hBuyMenu.Position;
+	DataPackPos pos = g_hBuyMenu.Position;
 	g_hBuyMenu.Reset();
 	g_hBuyMenu.WriteCell(pos);
 	
 	for (int i = 1; i <= MaxClients; i++)
 		if( IsValidClient(i) )
 			OnClientPostAdminCheck(i);
+}
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
+	g_hForward_RP_OnClientStealItem = CreateGlobalForward("RP_CanClientStealItem", ET_Event, Param_Cell, Param_Cell);
+	g_hForward_RP_OnClientWeaponPick = CreateGlobalForward("RP_OnClientWeaponPick", ET_Event, Param_Cell, Param_Cell);
+	g_hForward_RP_OnMarcheNoireMafia = CreateGlobalForward("RP_OnMarcheNoireMafia", ET_Event, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
+}
+public Action Cmd_GetStoreItem(int args) {
+	Cmd_BuyItemMenu(GetCmdArgInt(1), true);
 }
 public Action Cmd_ItemDoorProtect(int args) {
 	int client = GetCmdArgInt(1);
@@ -107,10 +126,10 @@ public Action Cmd_ItemDoorProtect(int args) {
 		float time = (appartID == 50 ? 12.0:24.0);
 		
 		if( g_flAppartProtection[appartID] <= GetGameTime() ) {
-			g_flAppartProtection[appartID] = GetGameTime() + time * 60.0;
+			g_flAppartProtection[appartID] = GetGameTime() + (time * 60.0);
 		}
 		else {
-			g_flAppartProtection[appartID] += (GetGameTime() + time * 60.0);
+			g_flAppartProtection[appartID] += (time * 60.0);
 		}
 		
 		CPrintToChat(client, "{lightblue}[TSX-RP]{default} La protection est activée pour %d minutes", RoundFloat((g_flAppartProtection[appartID] - GetGameTime()) / 60.0));
@@ -181,6 +200,11 @@ public Action fwdOnPlayerSteal(int client, int target, float& cooldown) {
 		ACCESS_DENIED(client);
 	}
 	
+	if( rp_GetZoneInt(rp_GetPlayerZone(target), zone_type_type) == 91 ) {
+		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous ne pouvez pas voler %N ici.", target);
+		return Plugin_Handled;
+	}
+	
 	if( rp_ClientFloodTriggered(client, target, fd_vol) ) {
 		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous ne pouvez pas voler %N, pour le moment.", target);
 		return Plugin_Handled;
@@ -231,7 +255,7 @@ public Action fwdOnPlayerSteal(int client, int target, float& cooldown) {
 		
 		rp_GetItemData(i, item_type_name, tmp, sizeof(tmp));
 		
-		addBuyMenu(client, i);
+		addBuyMenu(client, target, i);
 		
 		CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous avez volé %s à %N, il a été envoyé au marché noir.", tmp, target);
 		CPrintToChat(target, "{lightblue}[TSX-RP]{default} Quelqu'un vous a volé: %s.", tmp);
@@ -354,7 +378,7 @@ public Action fwdOnPlayerUse(int client) {
 	float vecOrigin[3];
 	GetClientAbsOrigin(client, vecOrigin);
 	if( GetVectorDistance(vecOrigin, MARCHE_NOIR) < 40.0 ) {
-		Cmd_BuyItemMenu(client);
+		Cmd_BuyItemMenu(client, false);
 	}
 }
 // ----------------------------------------------------------------------------
@@ -474,7 +498,7 @@ public Action ItemPiedBiche_frame(Handle timer, Handle dp) {
 		switch(type) {
 			case 2: { // Banque
 				time *= 2.0;
-				int count = countPolice(client), rand = 4 + Math_GetRandomPow(0, 4), i;
+				int count = rp_CountPoliceNear(client), rand = 4 + Math_GetRandomPow(0, 4), i;
 				
 				for (i = 0; i < count; i++)
 					rand += (4 + Math_GetRandomPow(0, 12));
@@ -535,6 +559,8 @@ public Action ItemPiedBiche_frame(Handle timer, Handle dp) {
 					rp_ClientGiveItem(client, sub, count);
 					rp_SetBuildingData(target, BD_count, 0);
 					stealAMount = 75 * count;
+					SetEntityModel(target, "models/custom_prop/marijuana/marijuana_0.mdl");
+					SDKHooks_TakeDamage(target, client, client, 125.0);
 					
 					int owner = rp_GetBuildingData(target, BD_owner);
 					if( IsValidClient(owner) ) {
@@ -698,6 +724,16 @@ public Action ItemPickLockOver_frame(Handle timer, Handle dp) {
 		rp_ClientColorize(client);
 		return Plugin_Stop;
 	}
+	
+	int difficulte = 1;
+	
+	if( rp_IsInPVP(client) )
+		difficulte += 1;
+	if( rp_GetZoneBit( rp_GetPlayerZone(door)) & BITZONE_HAUTESECU )
+		difficulte += 1;
+	if( g_iDoorDefine_LOCKER[doorID] )
+		difficulte += 2;
+	
 	if( percent >= 1.0 ) {
 		
 		if( IsValidClient(g_iDoorDefine_LOCKER[doorID]) ) {
@@ -714,14 +750,25 @@ public Action ItemPickLockOver_frame(Handle timer, Handle dp) {
 		
 		rp_ClientColorize(client);
 		
-		rp_SetDoorLock(doorID, false); 
-		rp_ClientOpenDoor(client, doorID, true);
-		
 		rp_SetClientStat(client, i_JobSucess, rp_GetClientStat(client, i_JobSucess) + 1);
 		rp_SetClientStat(client, i_JobFails, rp_GetClientStat(client, i_JobFails) - 1);
-		
 		rp_SetClientFloat(client, fl_LastCrochettage, GetGameTime());
 		
+		if( g_iLastDoor[client][2] != doorID && g_iLastDoor[client][1] != doorID && g_iLastDoor[client][0] != doorID
+			&& rp_GetPlayerZone(target) != 91 && rp_GetPlayerZone(client) != 91
+			&& !rp_GetClientKeyDoor(client, doorID) && GetEntProp(target, Prop_Data, "m_bLocked") ) {
+			
+			g_iLastDoor[client][2] = g_iLastDoor[client][1];
+			g_iLastDoor[client][1] = g_iLastDoor[client][0];
+			g_iLastDoor[client][0] = doorID;
+			
+			int rnd = rp_GetRandomCapital(91);
+			rp_SetJobCapital(rnd, rp_GetJobCapital(rnd) - (100*difficulte));
+			rp_SetJobCapital(91, rp_GetJobCapital(91) + (100*difficulte));
+		}
+		
+		rp_SetDoorLock(doorID, false); 
+		rp_ClientOpenDoor(client, doorID, true);
 		CPrintToChat(client, "{lightblue}[TSX-RP]{default} La porte a été ouverte.");
 		
 		return Plugin_Stop;
@@ -729,14 +776,6 @@ public Action ItemPickLockOver_frame(Handle timer, Handle dp) {
 	
 	rp_SetClientFloat(client, fl_CoolDown, GetGameTime() + 0.15);
 	float ratio = getKitDuration(client) / 5000.0;
-	int difficulte = 1;
-	
-	if( rp_IsInPVP(client) )
-		difficulte += 1;
-	if( rp_GetZoneBit( rp_GetPlayerZone(door)) & BITZONE_HAUTESECU )
-		difficulte += 1;
-	if( g_iDoorDefine_LOCKER[doorID] )
-		difficulte += 2;
 	
 	if( Math_GetRandomInt(1, 10) == 8 )
 		ServerCommand("sm_effect_particles %d Trail2 2 legacy_weapon_bone", client);
@@ -817,7 +856,7 @@ int getDistrib(int client, int& type) {
 	int owner = rp_GetBuildingData(target, BD_owner);
 	
 	
-	if( StrEqual(classname, "rp_bank") && owner == 0 )
+	if( StrEqual(classname, "rp_bank") && owner == 0 && !rp_GetBuildingData(target, BD_Trapped) )
 		type = 2;
 	if( StrEqual(classname, "rp_weaponbox") )
 		type = 3;
@@ -865,22 +904,6 @@ int getKitDuration(int client) {
 	}
 	return ratio;
 }
-int countPolice(int client) {
-	int job, count;
-	for(int i=1; i<MaxClients; i++) {
-		if( !IsValidClient(i) )
-			continue;
-		
-		job = rp_GetClientInt(i, i_Job);
-		
-		if( GetClientTeam(i) == CS_TEAM_CT || (job >= 1 && job <= 7 ) ) {
-			if( Entity_GetDistance(client, i) < (MAX_AREA_DIST+100) ) {
-				count++;
-			}
-		}
-	}
-	return count;
-}
 // ----------------------------------------------------------------------------
 void MENU_ShowPickLock(int client, float percent, int difficulte, int type) {
 
@@ -907,7 +930,7 @@ void MENU_ShowPickLock(int client, float percent, int difficulte, int type) {
 		case 4: AddMenuItem(menu, ".", "Difficulté: Très difficile", ITEMDRAW_DISABLED);
 	}
 	
-	Format(tmp, sizeof(tmp), "Policier proche: %d", countPolice(client));
+	Format(tmp, sizeof(tmp), "Policier proche: %d", rp_CountPoliceNear(client));
 	AddMenuItem(menu, ".", tmp, ITEMDRAW_DISABLED);
 	
 	SetMenuExitBackButton(menu, false);
@@ -1031,10 +1054,10 @@ public Action fwdDead(int client, int attacker) {
 	CreateTimer(0.1, appear, client);
 }
 
-void deleteBuyMenu(int pos) {
+void deleteBuyMenu(DataPackPos pos) {
 	g_hBuyMenu.Reset();
-	int max = g_hBuyMenu.ReadCell();
-	int position = g_hBuyMenu.Position;
+	DataPackPos max = g_hBuyMenu.ReadCell();
+	DataPackPos position = g_hBuyMenu.Position;
 	
 	DataPack clone = new DataPack();
 	clone.WriteCell(0);
@@ -1061,23 +1084,24 @@ void deleteBuyMenu(int pos) {
 	delete g_hBuyMenu;
 	g_hBuyMenu = clone;
 }
-void getBuyMenu(int pos, int data[IM_Max]) {
+void getBuyMenu(DataPackPos pos, int data[IM_Max]) {
 	g_hBuyMenu.Position = pos;
 	
 	for (int i = 0; i < view_as<int>(IM_Max); i++) {
 		data[i] = g_hBuyMenu.ReadCell();
 	}
 }
-void addBuyMenu(int client, int itemID) {
+void addBuyMenu(int client, int target, int itemID) {
 	
 	int data[IM_Max];
 	
 	data[IM_Owner] = client;
+	data[IM_StealFrom] = target;
 	data[IM_ItemID] = itemID;
 	data[IM_Prix] = (rp_GetItemInt(itemID, item_type_prix) * MARCHE_PERCENT) / 100;
 	
 	g_hBuyMenu.Reset();
-	int pos = g_hBuyMenu.ReadCell();
+	DataPackPos pos = g_hBuyMenu.ReadCell();
 	g_hBuyMenu.Position = pos;
 	for (int i = 0; i < view_as<int>(IM_Max); i++) {
 		g_hBuyMenu.WriteCell(data[i]);
@@ -1086,10 +1110,10 @@ void addBuyMenu(int client, int itemID) {
 	g_hBuyMenu.Reset();
 	g_hBuyMenu.WriteCell(pos);
 }
-void Cmd_BuyItemMenu(int client) {
+void Cmd_BuyItemMenu(int client, bool free) {
 	g_hBuyMenu.Reset();
-	int max = g_hBuyMenu.ReadCell();
-	int position = g_hBuyMenu.Position;
+	DataPackPos max = g_hBuyMenu.ReadCell();
+	DataPackPos position = g_hBuyMenu.Position;
 	char tmp[8], tmp2[129];
 	int data[IM_Max];
 	
@@ -1105,9 +1129,12 @@ void Cmd_BuyItemMenu(int client) {
 		
 		getBuyMenu(position, data);
 		
+		if( data[IM_Owner] == client )
+			data[IM_Prix] /= 10;
+		
 		rp_GetItemData(data[IM_ItemID], item_type_name, tmp2, sizeof(tmp2));
-		Format(tmp, sizeof(tmp), "%d", position);
-		Format(tmp2, sizeof(tmp2), "%s pour %d$", tmp2, data[IM_Prix]);
+		Format(tmp, sizeof(tmp), "%d %d", position, free);
+		Format(tmp2, sizeof(tmp2), "%s pour %d$", tmp2, free?0:data[IM_Prix]);
 		menu.AddItem(tmp, tmp2);
 		
 		position = g_hBuyMenu.Position;
@@ -1122,14 +1149,27 @@ public int Menu_BuyWeapon(Handle p_hMenu, MenuAction p_oAction, int client, int 
 	#endif
 	if (p_oAction == MenuAction_Select) {
 		
-		char szMenu[64], tmp[64];
+		char szMenu[64], tmp[64], buffer[2][32];
 		if( GetMenuItem(p_hMenu, p_iParam2, szMenu, sizeof(szMenu)) ) {
+			
+			ExplodeString(szMenu, " ", buffer, sizeof(buffer), sizeof(buffer[]));
 			int data[IM_Max];
-			int position = StringToInt(szMenu);
+			DataPackPos position = view_as<DataPackPos>(StringToInt(buffer[0]));
 			getBuyMenu(position, data);
 			
 			if( data[IM_ItemID] == 0 )
 				return 0;
+			
+			if( data[IM_Owner] == client ) {
+				data[IM_Prix] /= 10;
+				if( data[IM_Prix] == 0 )
+					data[IM_Prix] = 1;
+			}
+			
+			if( StringToInt(buffer[1]) == 1 ) {
+				rp_SetClientInt(client, i_LastVolAmount, 100+data[BM_Prix]); 
+				data[IM_Prix] = 0;
+			}
 			if( rp_GetClientInt(client, i_Bank) < data[IM_Prix] )
 				return 0;
 			
@@ -1145,9 +1185,14 @@ public int Menu_BuyWeapon(Handle p_hMenu, MenuAction p_oAction, int client, int 
 			rp_ClientGiveItem(client, data[IM_ItemID]);
 			rp_GetItemData(data[IM_ItemID], item_type_name, tmp, sizeof(tmp));
 			
+			doRP_RP_OnMarcheNoireMafia(client, data[IM_Owner], data[IM_StealFrom], data[IM_ItemID], data[IM_Prix]);
+			
 			LogToGame("[TSX-RP] [ITEM-VENDRE] %L a vendu 1 %s a %L", client, tmp, client);
 			
-			if( IsValidClient(data[IM_Owner]) && rp_GetClientJobID(data[IM_Owner]) == 91 ) {
+			if( data[IM_Owner] == client ) {
+				rp_SetJobCapital(91, rp_GetJobCapital(91) + RoundToCeil(float(data[IM_Prix]*10) * 0.5));
+			}
+			else if( IsValidClient(data[IM_Owner]) && rp_GetClientJobID(data[IM_Owner]) == 91 && data[IM_Prix] > 0 ) {
 				rp_SetJobCapital(91, rp_GetJobCapital(91) + RoundToCeil(float(data[IM_Prix]) * 0.5));
 				rp_SetClientInt(data[IM_Owner], i_AddToPay, rp_GetClientInt(data[IM_Owner], i_AddToPay) + RoundToFloor(float(data[IM_Prix]) * 0.5));
 				
@@ -1155,6 +1200,9 @@ public int Menu_BuyWeapon(Handle p_hMenu, MenuAction p_oAction, int client, int 
 			}
 			else {
 				rp_SetJobCapital(91, rp_GetJobCapital(91) + data[IM_Prix]);
+				
+				if( IsValidClient(data[IM_Owner]) )
+					CPrintToChat(data[IM_Owner], "{lightblue}[TSX-RP]{default} Quelqu'un vous a volé 1 %s au marché noir.", tmp);
 			}
 			
 			

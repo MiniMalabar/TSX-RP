@@ -40,8 +40,8 @@
 
 
 public Plugin myinfo =  {
-	name = "Quête: Braquage", author = "KoSSoLaX", 
-	description = "RolePlay - Quête Braquage", 
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX", 
+	description = "RolePlay - Quête "...QUEST_NAME, 
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -54,6 +54,12 @@ int g_iPlayerTeam[2049], g_stkTeam[QUEST_TEAMS + 1][MAXPLAYERS + 1], g_stkTeamCo
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
 	
+	HookEvent("hostage_follows", EV_PickupHostage, EventHookMode_Post);
+	HookEvent("hostage_rescued", EV_RescuseHostage, EventHookMode_Post);
+	
+	g_hActive 		= CreateConVar("rp_braquage", "0");
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if (g_iQuest == -1)
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -66,11 +72,6 @@ public void OnPluginStart() {
 	rp_QuestAddStep(g_iQuest, i++, Q5_Start,	Q5_Frame,	Q_Abort, QUEST_NULL);
 	rp_QuestAddStep(g_iQuest, i++, Q6_Start,	Q6_Frame,	Q_Abort, QUEST_NULL);
 	rp_QuestAddStep(g_iQuest, i++, QUEST_NULL,	Q7_Frame,	Q_Abort, Q_Complete);
-	
-	HookEvent("hostage_follows", EV_PickupHostage, EventHookMode_Post);
-	HookEvent("hostage_rescued", EV_RescuseHostage, EventHookMode_Post);
-	
-	g_hActive 		= CreateConVar("rp_braquage", "0");
 	
 	g_bCanMakeQuest = true;
 }
@@ -123,6 +124,25 @@ public bool fwdCanStart(int client) {
 }
 // ----------------------------------------------------------------------------
 public void Q_Abort(int objectiveID, int client) {
+	
+	for (int i = 0; i < g_stkTeamCount[TEAM_BRAQUEUR]; i++) {
+		if( client != g_stkTeam[TEAM_BRAQUEUR][i] )
+			rp_QuestComplete(g_stkTeam[TEAM_BRAQUEUR][i], QUEST_UNIQID, false);
+	}
+	
+	for (int i = 0; i < g_stkTeamCount[TEAM_BRAQUEUR_DEAD]; i++) {		
+		if( client != g_stkTeam[TEAM_BRAQUEUR_DEAD][i] )
+			rp_QuestComplete(g_stkTeam[TEAM_BRAQUEUR_DEAD][i], QUEST_UNIQID, false);
+	}
+	
+	for (int i = 0; i < g_stkTeamCount[TEAM_POLICE]; i++) {
+		if( client != g_stkTeam[TEAM_POLICE][i] )
+			rp_QuestComplete(g_stkTeam[TEAM_POLICE][i], QUEST_UNIQID, true);
+	}
+	
+	Q_Clean();
+}
+void Q_Clean() {
 	for (int i = 0; i < g_stkTeamCount[TEAM_BRAQUEUR]; i++) {
 		OnBraqueurKilled(g_stkTeam[TEAM_BRAQUEUR][i]);
 	}
@@ -173,7 +193,7 @@ public void Q1_Start(int objectiveID, int client) {
 	LogToGame("[BRAQUAGE] %N a lancé un braquage", client);
 }
 public void Q1_Frame(int objectiveID, int client) {
-	if( g_stkTeamCount[TEAM_BRAQUEUR] >= REQUIRED_T && g_stkTeamCount[TEAM_POLICE] >= REQUIRED_CT ) {
+	if( g_stkTeamCount[TEAM_BRAQUEUR] >= REQUIRED_T ) {
 		rp_QuestStepComplete(client, objectiveID);
 		return;
 	}
@@ -185,7 +205,7 @@ public void Q1_Frame(int objectiveID, int client) {
 	if( rp_ClientCanDrawPanel(client) ) {
 		char tmp[64], tmp2[64];		
 		Menu menu = new Menu(MenuInviterBraqueur);
-		menu.SetTitle("Quète: %s", QUEST_NAME);
+		menu.SetTitle("Quête: %s", QUEST_NAME);
 		menu.AddItem("refresh", "Actualiser le menu");
 		menu.AddItem("", "Braqueur confirmé:", ITEMDRAW_DISABLED);
 		for (int i = 0; i < g_stkTeamCount[TEAM_BRAQUEUR]; i++) {
@@ -251,7 +271,7 @@ public void Q3_Frame(int objectiveID, int client) {
 	if( rp_ClientCanDrawPanel(client) ) {
 		char tmp[64], tmp2[2][64];
 		Menu menu = new Menu(MenuSelectPlanque);
-		menu.SetTitle("Quète: %s", QUEST_NAME);
+		menu.SetTitle("Quête: %s", QUEST_NAME);
 		
 		if( g_iJobs[31] == 0 ) {
 			g_iQ3 = objectiveID;
@@ -324,6 +344,7 @@ public void Q5_Start(int objectiveID, int client) {
 		if( Client_GetWeaponBySlot(g_stkTeam[TEAM_BRAQUEUR][i], CS_SLOT_PRIMARY) < 0 ) {
 			int wepid = Client_GiveWeapon(g_stkTeam[TEAM_BRAQUEUR][i], "weapon_ak47", true);
 			Weapon_SetPrimaryClip(wepid, 5000);
+			rp_SetWeaponBallType(wepid, ball_type_braquage);
 		}
 		if( Client_GetWeaponBySlot(g_stkTeam[TEAM_BRAQUEUR][i], CS_SLOT_SECONDARY) < 0 )
 			GivePlayerItem(g_stkTeam[TEAM_BRAQUEUR][i], "weapon_revolver");
@@ -475,6 +496,18 @@ public void Q_Complete(int objectiveID, int client) {
 	for (int i = 0; i < g_stkTeamCount[TEAM_BRAQUEUR]; i++) {
 		CPrintToChat(g_stkTeam[TEAM_BRAQUEUR][i], "{lightblue}[TSX-RP]{default} Vous avez gagné %d$ pour votre braquage de %s.", gain, tmp2[0]);
 		rp_SetClientInt(g_stkTeam[TEAM_BRAQUEUR][i], i_AddToPay, rp_GetClientInt(g_stkTeam[TEAM_BRAQUEUR][i], i_AddToPay) + gain);
+		
+		if( client != g_stkTeam[TEAM_BRAQUEUR][i] )
+			rp_QuestComplete(g_stkTeam[TEAM_BRAQUEUR][i], QUEST_UNIQID, true);
+	}
+	
+	for (int i = 0; i < g_stkTeamCount[TEAM_BRAQUEUR_DEAD]; i++) {		
+		if( client != g_stkTeam[TEAM_BRAQUEUR_DEAD][i] )
+			rp_QuestComplete(g_stkTeam[TEAM_BRAQUEUR_DEAD][i], QUEST_UNIQID, true);
+	}
+	for (int i = 0; i < g_stkTeamCount[TEAM_POLICE]; i++) {
+		if( client != g_stkTeam[TEAM_POLICE][i] )
+			rp_QuestComplete(g_stkTeam[TEAM_POLICE][i], QUEST_UNIQID, false);
 	}
 	
 	rp_SetJobCapital(g_iPlanque, rp_GetJobCapital(g_iPlanque) - gain*3/4);
@@ -489,7 +522,7 @@ public void Q_Complete(int objectiveID, int client) {
 			rp_SetClientInt(g_stkTeam[TEAM_POLICE][i], i_Money, rp_GetClientInt(g_stkTeam[TEAM_POLICE][i], i_Money) - amendePolice);
 		}
 	}
-	Q_Abort(objectiveID, client);
+	Q_Clean();
 }
 // ----------------------------------------------------------------------------
 public Action EV_PickupHostage(Handle ev, const char[] name, bool broadcast) {
@@ -576,8 +609,8 @@ public Action fwdZoneChange(int client, int newZone, int oldZone) {
 		detachHostage(client);
 	}
 }
-public Action fwdGotKey(int client, int doorID) {
-	if( g_iPlayerTeam[client] == TEAM_POLICE || g_iPlayerTeam[client] == TEAM_BRAQUEUR ) {
+public Action fwdGotKey(int client, int doorID, int lockType) {
+	if( lockType == 2 && (g_iPlayerTeam[client] == TEAM_POLICE || g_iPlayerTeam[client] == TEAM_BRAQUEUR) ) {
 		float pos[3];
 		Entity_GetAbsOrigin(doorID, pos);
 		
@@ -627,6 +660,9 @@ public Action fwdDamage(int attacker, int victim, float& damage, int wepID, floa
 	if( g_iPlayerTeam[attacker] == TEAM_BRAQUEUR && g_iPlayerTeam[victim] != TEAM_POLICE && rp_GetZoneInt(rp_GetPlayerZone(victim), zone_type_type) != g_iPlanque ) {
 		return Plugin_Handled;
 	}
+	if( g_iPlayerTeam[attacker] != TEAM_BRAQUEUR && g_iPlayerTeam[victim] == TEAM_POLICE && rp_GetZoneInt(rp_GetPlayerZone(victim), zone_type_type) == g_iPlanque ) {
+		return Plugin_Handled;
+	}
 	if( g_iPlayerTeam[attacker] != TEAM_POLICE && g_iPlayerTeam[victim] == TEAM_BRAQUEUR ) {
 		return Plugin_Handled;
 	}
@@ -651,7 +687,7 @@ public Action RP_ClientCanTP(int client) {
 // ----------------------------------------------------------------------------
 void DrawMenu_Invitation(int client, int target) {
 	Menu menu = new Menu(MenuInviterBraqueur);
-	menu.SetTitle("%N souhaite participer\nà la quète %s\n avec vous dans l'équipe: %s.\n \n Acceptez-vous son invitation?", client, QUEST_NAME, TEAM_NAME1);
+	menu.SetTitle("%N souhaite participer\nà la Quête %s\n avec vous dans l'équipe: %s.\n \n Acceptez-vous son invitation?", client, QUEST_NAME, TEAM_NAME1);
 	menu.AddItem("oui", "Oui");
 	menu.AddItem("non", "Non");
 	menu.ExitButton = false;
@@ -687,6 +723,7 @@ public int MenuRespawnBraqueur(Handle menu, MenuAction action, int client, int p
 			if( Client_GetWeaponBySlot(target, CS_SLOT_PRIMARY) < 0 ) {
 				int wepid = Client_GiveWeapon(target, "weapon_ak47", true);
 				Weapon_SetPrimaryClip(wepid, 5000);
+				rp_SetWeaponBallType(wepid, ball_type_braquage);
 			}
 			if( Client_GetWeaponBySlot(target, CS_SLOT_SECONDARY) < 0 )
 				GivePlayerItem(target, "weapon_revolver");
@@ -844,6 +881,9 @@ bool findAreaInRoom(int jobID, float pos[3]) {
 	
 	if( !loaded ) {
 		for (int i = 1; i < MAX_ZONES; i++) {
+			if (i == 181)
+				continue;
+			
 			int job = rp_GetZoneInt(i, zone_type_type);
 			if( job <= 0 || job >= MAX_JOBS || job == 14 || job == 101 )
 				continue;

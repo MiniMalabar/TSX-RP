@@ -14,6 +14,7 @@
 #define _rp_tools_included_
 
 #include <sdkhooks>
+#include <cstrike>
 // ----------------------------------------------------------------------------
 public int Math_GetRandomPow(int min, int max) {
 	return RoundToFloor(float(max - min) * Pow(GetURandomFloat(), 2.0)) + min;
@@ -101,11 +102,13 @@ public bool FilterToOne(int entity, int mask, any data) {
 	static char classname[64];
 	if( entity == data )
 		return false;
-	GetEdictClassname(entity, classname, sizeof(classname));
-	
-	if( StrEqual(classname, "notsolid") )
+	if( Entity_GetParent(entity) == data )
 		return false;
 		
+	GetEdictClassname(entity, classname, sizeof(classname));
+	if( StrEqual(classname, "notsolid") )
+		return false;
+	
 	return true;
 }
 public void SQL_QueryCallBack(Handle owner, Handle handle, const char[] error, any data) {
@@ -303,13 +306,9 @@ public Action rp_ClientRemoveProp(int client, int target, int item_id) {
 					CPrintToChat(client, "{lightblue}[TSX-RP]{default} Vous avez detruit un plant de drogue de %N", owner);
 					CPrintToChat(owner, "{lightblue}[TSX-RP]{default} Une de vos plantations a été detruite.");
 				}
-				else if( owner == client ) {				
+				else if( owner == client && rp_GetBuildingData(target, BD_FromBuild) == 0 ) {				
 					int sub = rp_GetBuildingData(target, BD_item_id);
 					rp_ClientGiveItem(client, sub, rp_GetBuildingData(target, BD_count));
-					
-					if( rp_GetBuildingData(target, BD_started)+180 < GetTime() ) {
-						rp_ClientGiveItem(client, sub, Math_GetRandomInt(1, 5) );
-					}
 				}
 			}
 			
@@ -364,24 +363,69 @@ public Action rp_ClientRemoveProp(int client, int target, int item_id) {
 	
 	return Plugin_Continue;
 }
-stock int rp_GetWeaponPrice(int target) {
+stock int rp_GetWeaponPrice(int weaponID) {
 	char classname[65], tmp[255], tmp2[255];
-	GetEdictClassname(target, classname, sizeof(classname));
+	GetEdictClassname(weaponID, classname, sizeof(classname));
 	
 	for (int i = 1; i < MAX_ITEMS; i++) {
 		rp_GetItemData(i, item_type_extra_cmd, tmp, sizeof(tmp));
 		Format(tmp2, sizeof(tmp2), "rp_giveitem %s", classname);
 		if( StrEqual(tmp, tmp2) ) {
-			rp_GetItemInt(i, item_type_prix);
-			return rp_GetItemInt(i, item_type_prix);
+			return rp_GetItemInt(i, item_type_prix) + rp_GetWeaponPriceCartouche(weaponID);
 		}
 	}
 	
 	ReplaceString(classname, sizeof(classname), "weapon_", "");
-	int owner = GetEntPropEnt(target, Prop_Send, "m_hPrevOwner");
+	int owner = GetEntPropEnt(weaponID, Prop_Send, "m_hPrevOwner");
 	
 	if( owner > 0 && view_as<int>(CS_AliasToWeaponID(classname)) > 0 )
-		return CS_GetWeaponPrice(owner, CS_AliasToWeaponID(classname));
+		return CS_GetWeaponPrice(owner, CS_AliasToWeaponID(classname)) + rp_GetWeaponPriceCartouche(weaponID);
 	// fallback:
 	return 500; 
+}
+public int rp_GetWeaponPriceCartouche(int weaponID) {
+	int prix;
+	if(rp_GetWeaponGroupID(weaponID) > 0)
+		prix += 250;
+
+	switch( rp_GetWeaponBallType(weaponID) ){
+		case ball_type_fire          : prix += 250;
+		case ball_type_caoutchouc    : prix += 200;
+		case ball_type_poison        : prix += 200;
+		case ball_type_vampire       : prix += 200;
+		case ball_type_paintball     : prix += 50;
+		case ball_type_reflexive     : prix += 200;
+		case ball_type_explode       : prix += 300;
+		case ball_type_revitalisante : prix += 200;
+		case ball_type_nosteal       : prix += 50;
+		case ball_type_notk          : prix += 50;
+		case ball_type_braquage      : prix += 1000;
+	}
+	return prix;
+}
+public int rp_CountPoliceNear(int client) {
+	static float g_flLastCheck[65];
+	static int g_iLastData[65];
+	
+	if( g_flLastCheck[client] > GetGameTime() ) {
+		return g_iLastData[client];
+	}
+	
+	int job, count;
+	for(int i=1; i<MaxClients; i++) {
+		if( !IsValidClient(i) )
+			continue;
+		
+		job = rp_GetClientInt(i, i_Job);
+		
+		if( GetClientTeam(i) == CS_TEAM_CT || (job >= 1 && job <= 7 ) ) {
+			if( Entity_GetDistance(client, i) < 500 && !rp_GetClientBool(i, b_IsAFK) ) {
+				count++;
+			}
+		}
+	}
+	
+	g_flLastCheck[client] = GetGameTime() + 0.5;
+	g_iLastData[client] = count;
+	return count;
 }

@@ -31,8 +31,8 @@
 
 
 public Plugin myinfo = {
-	name = "Quête: Récolte des plants", author = "KoSSoLaX",
-	description = "RolePlay - Quête Dealer: Récolte des plants",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Dealer: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -41,7 +41,8 @@ Handle g_hDoing;
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -83,7 +84,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Hey gros, on a un nouveau gros client et nous", ITEMDRAW_DISABLED);
 	menu.AddItem("", "avons besoin de toi pour une nouvelle fournée.", ITEMDRAW_DISABLED);
@@ -114,11 +115,13 @@ public void Q1_Abort(int objectiveID, int client) {
 	PrintHintText(client, "<b>Quête</b>: %s\nLa quête est terminée.", QUEST_NAME);
 	RemoveFromArray(g_hDoing, FindValueInArray(g_hDoing, client));
 }
-public void RP_OnClientPiedBiche(int client) {
-	int length = GetArraySize(g_hDoing);
-	for (int i = 0; i < length; i++) {
-		if( GetArrayCell(g_hDoing, i) == client ) {
-			rp_QuestStepComplete(client, g_iStep[client]);
+public void RP_OnClientPiedBiche(int client, int type) {
+	if( type == 5  ) {
+		int length = GetArraySize(g_hDoing);
+		for (int i = 0; i < length; i++) {
+			if( GetArrayCell(g_hDoing, i) == client ) {
+				rp_QuestStepComplete(client, g_iStep[client]);
+			}
 		}
 	}
 }
@@ -133,7 +136,7 @@ public void Q1_Done(int objectiveID, int client) {
 public void Q2_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Tu as 6 heures pour déraciner", ITEMDRAW_DISABLED);
 	menu.AddItem("", "un autre plant sur la place de l'indépendance.", ITEMDRAW_DISABLED);

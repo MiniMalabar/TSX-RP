@@ -28,8 +28,8 @@
 #define QUEST_TYPE      quest_daily
 
 public Plugin myinfo =  {
-	name = "Quête: Commande d'artisanat", author = "KoSSoLaX", 
-	description = "RolePlay - Quête artisant: Commande d'artisanat", 
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX", 
+	description = "RolePlay - Quête artisant: "...QUEST_NAME, 
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -38,13 +38,15 @@ bool g_bDoingQuest[65];
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
+}
+public void OnAllPluginsLoaded() {
+	SQL_TQuery(rp_GetDatabase(), SQL_LoadReceipe, "SELECT `itemid`, `prix` FROM rp_craft C INNER JOIN rp_items I ON C.`itemid`=I.`id` WHERE I.`job_id`>0 AND I.`extra_cmd`<>'rp_item_spawnflag' GROUP BY `itemid`;", 0, DBPrio_Low);
 	
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if (g_iQuest == -1)
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
 	
-	SQL_TQuery(rp_GetDatabase(), SQL_LoadReceipe, "SELECT `itemid`, `prix` FROM rp_craft C INNER JOIN rp_items I ON C.`itemid`=I.`id` WHERE I.`job_id`>0 AND I.`extra_cmd`<>'rp_item_spawnflag' GROUP BY `itemid`;", 0, DBPrio_Low);
-	
+
 	int i;
 	rp_QuestAddStep(g_iQuest, i++, Q1_Start, Q1_Frame, Q_Abort, QUEST_NULL);
 	rp_QuestAddStep(g_iQuest, i++, QUEST_NULL, Q2_Frame, Q_Abort, Q_Done);
@@ -76,7 +78,7 @@ public void Q1_Start(int objectiveID, int client) {
 	
 	Format(tmp, sizeof(tmp), "%d %s", count, tmp);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "-----------------", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Monsieur, nous avons une commande de", ITEMDRAW_DISABLED);
 	menu.AddItem("", tmp, ITEMDRAW_DISABLED);
@@ -119,7 +121,7 @@ public int RP_CanClientCraftForFree(int client, int itemID) {
 	}
 	return 0;
 }
-public Action RP_ClientCraftOver(int client, int itemID) {
+public void RP_ClientCraftOver(int client, int itemID) {
 	if( g_bDoingQuest[client] && g_iCraftItem[client] == itemID && g_iCraftLeft[client] > 0 ) {
 		g_iCraftLeft[client]--;
 		rp_ClientGiveItem(client, itemID, -1);

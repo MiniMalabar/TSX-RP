@@ -30,8 +30,8 @@
 #define	QUEST_RESUME	"Libérez les prisonniers"
 
 public Plugin myinfo = {
-	name = "Quête: Délivrance", author = "KoSSoLaX",
-	description = "RolePlay - Quête Mafia: Délivrance",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Mafia: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -40,7 +40,8 @@ Handle g_hDoing;
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -89,7 +90,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 
 	Menu menu = new Menu(MenuNothing);
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Mon frère, l'un de nos hommes a été arrêté.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Nous avons besoin de toi.", ITEMDRAW_DISABLED);
@@ -170,8 +171,9 @@ public Action fwdOnZoneChange(int client, int newZone, int oldZone) {
 					if( rp_GetZoneBit(oldZone) & BITZONE_JAIL &&  zoneID[k] == newZone ) {
 						
 						int cap = rp_GetRandomCapital(91);
-						rp_SetJobCapital(cap, rp_GetJobCapital(cap) - 1000);
+						rp_SetJobCapital(cap, rp_GetJobCapital(cap) - 1100);
 						rp_SetClientInt(target, i_AddToPay, rp_GetClientInt(target, i_AddToPay) + 1000);
+						rp_SetJobCapital(91, rp_GetJobCapital(91) + 100);
 						
 						rp_ClientSendToSpawn(client, false);
 						

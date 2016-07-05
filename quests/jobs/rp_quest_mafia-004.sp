@@ -30,8 +30,8 @@
 #define	QUEST_RESUME	"Récupérer les armes"
 
 public Plugin myinfo = {
-	name = "Quête: Trafic d'arme", author = "KoSSoLaX",
-	description = "RolePlay - Quête Mafia: Trafic d'arme",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Mafia: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -39,7 +39,8 @@ int g_iQuest, g_iDuration[MAXPLAYERS + 1], g_iStep[MAXPLAYERS + 1], g_iDoing[MAX
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -83,7 +84,7 @@ public void RP_OnClientWeaponPick(int client, int type) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Mon frère, Nous avons besoin de toi.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "La police a acheté des nouveaux", ITEMDRAW_DISABLED);
@@ -113,16 +114,8 @@ public void Q2_Start(int objectiveID, int client) {
 	g_iStep[client]++;
 }
 public void Q3_Start(int objectiveID, int client) {
-	Menu menu = new Menu(MenuNothing);
-	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
-	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Tu as les armes !", ITEMDRAW_DISABLED);
-	menu.AddItem("", "Rapporte les nous au plus vite à la planque !", ITEMDRAW_DISABLED);
-	
-	menu.ExitButton = false;
-	menu.Display(client, 30);
-	
+	CPrintToChat(client, "{lightblue}[TSX-RP]{default} Interlocuteur anonyme : Tu as les armes, rapporte les nous au plus vite à la planque !");
+
 	g_iDuration[client] = 6 * 60;
 	g_iStep[client] = 0;
 }

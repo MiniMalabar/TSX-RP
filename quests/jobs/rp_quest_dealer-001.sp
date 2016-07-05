@@ -32,8 +32,8 @@
 
 
 public Plugin myinfo = {
-	name = "Quête: Surveillance des plants", author = "KoSSoLaX",
-	description = "RolePlay - Quête Dealer: Surveillance des plants",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Dealer: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -42,7 +42,8 @@ Handle g_hDoing;
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -69,7 +70,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Hey gros, on a un nouveau gros client et nous", ITEMDRAW_DISABLED);
 	menu.AddItem("", "avons besoin de toi pour une nouvelle fournée.", ITEMDRAW_DISABLED);
@@ -105,7 +106,7 @@ public void Q1_Abort(int objectiveID, int client) {
 public void Q2_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Parfait, assure toi que ces plants arrivent", ITEMDRAW_DISABLED);
 	menu.AddItem("", "à maturation.", ITEMDRAW_DISABLED);
@@ -122,14 +123,7 @@ public void RP_OnClientMaxPlantCount(int client, int& max) {
 	int length = GetArraySize(g_hDoing);
 	for (int i = 0; i < length; i++) {
 		if( GetArrayCell(g_hDoing, i) == client && max < 10 && rp_GetZoneInt(rp_GetPlayerZone(client), zone_type_type) == QUEST_JOBID )
-			max = 10;
-	}
-}
-public void RP_OnClientBuildingPrice(int client, int& price) {
-	int length = GetArraySize(g_hDoing);
-	for (int i = 0; i < length; i++) {
-		if( GetArrayCell(g_hDoing, i) == client && rp_GetZoneInt(rp_GetPlayerZone(client), zone_type_type) == QUEST_JOBID )
-			price = 0;
+			max += 10;
 	}
 }
 public void Q2_Frame(int objectiveID, int client) {

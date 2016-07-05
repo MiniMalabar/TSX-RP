@@ -24,14 +24,14 @@
 
 //#define DEBUG
 #define QUEST_UNIQID	"justice-002"
-#define	QUEST_NAME		"La justice exprès"
+#define	QUEST_NAME		"La justice express"
 #define	QUEST_TYPE		quest_daily
 #define	QUEST_JOBID		1
 #define	QUEST_RESUME	"Condamnez un joueur"
 
 public Plugin myinfo = {
-	name = "Quête: La justice exprès", author = "KoSSoLaX",
-	description = "RolePlay - Quête Justice: La justice exprès",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Justice: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -39,7 +39,8 @@ int g_iQuest, g_iDuration[MAXPLAYERS + 1], g_iDoing[MAXPLAYERS + 1];
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -66,7 +67,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Maître, nous vous accordons un bonus pour", ITEMDRAW_DISABLED);
 	menu.AddItem("", "vos 3 prochaines condamnations.", ITEMDRAW_DISABLED);

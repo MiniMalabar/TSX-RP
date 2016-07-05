@@ -14,6 +14,26 @@
 #define _tsxrp_included_
 
 // ----------------------------------------------------------------------------
+// Artisan:
+forward int RP_CanClientCraftForFree(int client, int itemID);
+forward void RP_ClientCraftOver(int client, int itemID);
+// Dealer
+forward void RP_On18thStealWeapon(int client, int victim, int weaponID);
+forward void RP_OnClientMaxPlantCount(int client, int& max);
+forward void RP_OnClientPiedBiche(int client, int type );
+forward Action RP_ClientCanTP(int client);
+forward void RP_OnMarcheNoireDealer(int client, int prix);
+// Mafia
+forward Action RP_CanClientStealItem(int client, int target);
+forward void RP_OnClientWeaponPick(int client, int type);
+forward void RP_OnMarcheNoireMafia(int client, int target, int victim, int itemID, int prix);
+// Police:
+forward void RP_OnClientTazedItem(int client, int reward);
+forward Action RP_OnClientSendJail(int client, int target);
+forward void RP_OnMarchePolice(int client, int prix, int realPrice);
+// Technicien:
+forward void RP_OnClientMaxMachineCount(int client, int& max);
+// ----------------------------------------------------------------------------
 enum rp_event {
 	RP_PreTakeDamage,			     /* Le joueur recoit des dégats, quelques soit l'arme. Attention, n'est jamais appelé en zone EVENT */
 	RP_PostTakeDamageWeapon,	 /* La détection d'arme a été faites. */
@@ -31,6 +51,7 @@ enum rp_event {
 	RP_OnAssurance,			       /* Modifie l'assurance, est appelé à chaques fois que le serveur la recalcule */
 	RP_OnPlayerSpawn,			     /* Lorsqu'un joueur respawn. Appelé après l'avoir TP Au bon endroit */
 	RP_OnPlayerDead,           /* Un joueur meurt. Return Plugin_Handled pour cacher la mort des logs*/
+	RP_OnPlayerKill,           /* Un joueur tue. Return Plugin_Handled pour cacher la mort des logs*/
 	RP_OnPlayerBuild,          /* Un joueur utilise la commande /build */
 	RP_OnPlayerUse,             /* Un joueur utilise la commande utiliser (touche E). */
 	RP_OnPlayerCommand,        /* Un joueur execute une commande, /vol, /truc, /bidule. command ne contient ni de !, ni de /. */
@@ -43,6 +64,7 @@ enum rp_event {
 	RP_OnPlayerSell,           /* Quand un joueur fait une vente */
 	RP_OnPlayerHUD,            /* A chaque fois que le HUD à gauche se refresh */
 	RP_OnPlayerCheckKey,	   /* A chaque vérification s'il a la clé */
+	RP_OnResellWeapon,		   /* Revente d'arme au marché noire */
 
 	RP_EventMax
 }
@@ -62,6 +84,8 @@ typeset rp_event_enum {
 	function Action(int client, int& amount);						                               /* RP_OnAssurance */
 	function Action(int client);							        	                               /* RP_OnPlayerSpawn */
 	function Action(int victim, int attacker, float& respawn);	                       /* RP_OnPlayerDead == return Plugin_Handled = cacher des logs */
+	function Action(int attacker, int victim, char weapon[64]);	                       /* RP_OnPlayerKill == return Plugin_Handled = cacher des logs */
+	
 	function Action(int client, float& cooldown);					                             /* RP_OnPlayerBuild */
 	function Action(int client);								                                       /* RP_OnPlayerUse */
 	function Action(int client, char[] command, char[] arg);		                       /* RP_OnPlayerCommand */
@@ -72,7 +96,8 @@ typeset rp_event_enum {
 	function Action(int client);								                                       /* RP_OnPlayerDataLoaded */
 	function Action(int client, int money);					                         	         /* RP_OnPlayerSell */
 	function Action(int client, char[] szHUD, const int maxSize);			                 /* RP_OnPlayerHUD */
-	function Action(int client, int doorID);											/* RP_OnPlayerCheckKey */
+	function Action(int client, int doorID, int lockStatus);											/* RP_OnPlayerCheckKey */
+	function Action(int client, int weaponID, int price);									/* RP_OnResellWeapon */
 };
 /**
  * Hook un évenement d'un joueur
@@ -89,6 +114,7 @@ native bool rp_HookEvent(int client, rp_event eventID, rp_event_enum hook, float
  * @param  rp_event_enum hook          la fonction à ne plus utiliser
  */
 native bool rp_UnhookEvent(int client, rp_event eventID, rp_event_enum hook);
+native Handle rp_GetForwardHandle(int client, rp_event eventID);
 // ----------------------------------------------------------------------------
 //                                                 Getter et Setter sur joueur
 // ----------------------------------------------------------------------------
@@ -337,12 +363,46 @@ native void rp_SetVehicleInt(int vehicleID, car_data typeID, int value);
  * @return int      La valeur
  */
 native int rp_GetVehicleInt(int vehicleID, car_data typeID);
+/**
+ * Crée un véhicule
+ * @param  {[type]} float  origin[3]     coordonnée
+ * @param  {[type]} float  angle[3]      angle
+ * @param  {[type]} char[] model         Le model doit être mis en cache avant d'appeler cette fonction.
+ * @param  {[type]} int    skin          Le numéro du skin
+ * @param  {[type]} int    client        =             0 Le propriétaire.
+ * @return {[type]}        retourne le numéro de la voiture
+ */
 native int rp_CreateVehicle(float origin[3], float angle[3], char[] model, int skin, int client = 0);
 // ----------------------------------------------------------------------------
-native void rp_SetAppartementInt(int appartID, type_appart_bonus typeID, int value);		/* Définir une propriétée d'un appartement */
-native int rp_GetAppartementInt(int appartID, type_appart_bonus typeID);				/* Récupérer une propriétée d'un appartement */
-native void rp_SetClientKeyAppartement(int client, int appartID, bool status=false);		/* Donner une clé à un joueur d'un appartement */
-native bool rp_GetClientKeyAppartement(int client, int appartID);						/* Est-ce qu'un joueur possède la clé d'un appartement ? */
+/**
+ * Définir une propriétée d'un appartement
+ * @param  {[type]} int               appartID      Le numéro de l'appart, de 1 à 200
+ * @param  {[type]} type_appart_bonus typeID        La propriétée
+ * @param  {[type]} int               value         sa valeur
+ */
+native void rp_SetAppartementInt(int appartID, type_appart_bonus typeID, int value);
+/**
+ * Récupérer une propriétée d'un appartement
+ * @param  {[type]} int               appartID      Le numéro de l'appart, de 1 à 200
+ * @param  {[type]} type_appart_bonus typeID        La propriétée
+ * @return {[type]}                   Sa valeur
+ */
+native int rp_GetAppartementInt(int appartID, type_appart_bonus typeID);
+/**
+ * Définir si un joueur a la clé d'un appartement
+ * @param  {[type]} int  client        Le joueur
+ * @param  {[type]} int  appartID      Le numéro de l'appart, de 1 à 200
+ * @param  {[type]} bool status=false  Vrai il l'a, faux il a pas la clé
+ * @return {[type]}      [description]
+ */
+native void rp_SetClientKeyAppartement(int client, int appartID, bool status=false);
+/**
+ * Le joueur a t-il la clé d'un appartement?
+ * @param  {[type]} int client        Le joueur
+ * @param  {[type]} int appartID      Le numéro de l'appart, de 1 à 200
+ * @return {[type]}     Vrai, s'il a la clé.
+ */
+native bool rp_GetClientKeyAppartement(int client, int appartID);
 // ----------------------------------------------------------------------------
 native void rp_Effect_PropExplode(int entityID, bool tazer = false);					/* Explose un props, s'il est piégé */
 native void rp_Effect_Smoke(int client, float duration = 30.0);						/* Petit effect de fumée de cigarette */
@@ -434,8 +494,9 @@ native int rp_RegisterQuest(char uniqID[32], char name[64], quest_type_type type
 native void rp_QuestAddStep(int questID, int stepID, QuestFct start, QuestFct frame, QuestFct abort, QuestFct done);
 native int rp_QuestCreateInstance(int client, char model[PLATFORM_MAX_PATH], float vecPos[3]);
 native void rp_QuestSetGroupCreationFct(int questID, QuestFctInit fwd);
-native void rp_QuestStart(int clientID, int questID);
-native void rp_QuestCancel(int clientID, int questID);
+native void rp_QuestStart(int client, int questID);
+native void rp_QuestCancel(int client, int questID);
+native bool rp_QuestComplete(int client, char uniqID[32], bool status);
 // ----------------------------------------------------------------------------
 native int rp_GetClientTarget(int client, float dst[3] = {0.0, 0.0, 0.0});
 native int rp_GetClientSSO(int client, char[] sso, int length);
@@ -456,12 +517,12 @@ native int rp_WeaponMenu_GetOwner(int wepID);
 native DataPack rp_WeaponMenu_Create();
 native void rp_WeaponMenu_Clear(DataPack& hBuyMenu);
 native void rp_WeaponMenu_Reset(DataPack hBuyMenu);
-native void rp_WeaponMenu_SetPosition(DataPack hBuyMenu, int position);
-native int rp_WeaponMenu_GetPosition(DataPack hBuyMenu);
-native int rp_WeaponMenu_GetMax(DataPack hBuyMenu);
+native void rp_WeaponMenu_SetPosition(DataPack hBuyMenu, DataPackPos position);
+native DataPackPos rp_WeaponMenu_GetPosition(DataPack hBuyMenu);
+native DataPackPos rp_WeaponMenu_GetMax(DataPack hBuyMenu);
 native bool rp_WeaponMenu_Add(DataPack hBuyMenu, int weaponID, int owner);
-native void rp_WeaponMenu_Delete(DataPack& hBuyMenu, int pos);
-native void rp_WeaponMenu_Get(DataPack hBuyMenu, int pos, char weapon[65], int data[BM_Max]);
+native void rp_WeaponMenu_Delete(DataPack& hBuyMenu, DataPackPos pos);
+native void rp_WeaponMenu_Get(DataPack hBuyMenu, DataPackPos pos, char weapon[65], int data[BM_Max]);
 // ----------------------------------------------------------------------------
 #define ACCESS_DENIED(%1)	CPrintToChat(%1, "{lightblue}[TSX-RP]{default} Vous n'avez pas accès à cette commande.");	return Plugin_Handled
 #define ITEM_CANCEL(%1,%2)	rp_ClientGiveItem(%1,%2); rp_SetClientFloat(%1, fl_CoolDown, 0.05)
@@ -526,10 +587,6 @@ enum bool_user_data {
 	b_HasShoes,
 	b_SpawnToGrave,
 	b_Pissing,
-	b_ChiruRegen,
-	b_ChiruMaxHeal,
-	b_ChiruKevlar,
-	b_ChiruYeux,
 	b_IsAFK,
 	b_IsMuteGlobal,
 	b_IsMuteLocal,
@@ -548,7 +605,13 @@ enum bool_user_data {
 	b_HasVilla,
 	b_CanSort,
 	b_MayUseUltimate,
-
+	ch_Force,
+	ch_Speed,
+	ch_Jump,
+	ch_Regen,
+	ch_Heal,
+	ch_Kevlar,
+	ch_Yeux,
 	b_udata_max
 };
 enum int_user_data {
@@ -590,7 +653,6 @@ enum int_user_data {
 	i_jailTime_Last,
 	i_jailTime_Reason,
 	i_Perquiz,
-	i_Camera,
 	i_GPS,
 	i_Machine,
 	i_Plant,
@@ -607,6 +669,7 @@ enum int_user_data {
 	i_TeleportTo,
 	i_Disposed,
 	i_Mask,
+	i_MaskCount,
 	i_AppartCount,
 	i_LastKillTime,
 	i_AddToPay,
@@ -630,6 +693,11 @@ enum int_user_data {
 	i_ArtisanLevel,
 	i_ArtisanPoints,
 	i_FakeClient,
+	
+	i_KillMonth,
+	i_DeathMonth,
+	i_Kill31Days,
+	i_Death31Days,
 
 	i_udata_max
 };
@@ -656,12 +724,11 @@ enum float_user_data {
 	Float:fl_Alcool,
 	Float:fl_LowDamage,
 	Float:fl_HallucinationTime,
-	Float:fl_RespawnTime,	
+	Float:fl_RespawnTime,
 	Float:fl_ArtisanFatigue,
 	Float:fl_LastPoison,
 	Float:fl_LastCrochettage,
-	Float:fl_Ratio,
-	
+
 	fl_udata_max
 };
 enum sz_user_data {
@@ -676,7 +743,7 @@ enum fd_user_data {
 	fd_vol,
 	fd_job,
 	fd_kidnapping,
-	
+
 	fd_udata_max
 };
 enum sick_type {
@@ -765,7 +832,8 @@ enum building_prop_data {
 	BD_owner,
 	BD_Trapped,
 	BD_item_id,
-
+	BD_FromBuild,
+	
 	building_prop_data_max
 };
 enum rp_capture_zone {
@@ -788,6 +856,7 @@ enum enum_ball_type {
 	ball_type_revitalisante,
 	ball_type_nosteal,
 	ball_type_notk,
+	ball_type_braquage,
 	ball_type_max
 };
 enum rp_item_type {
@@ -871,7 +940,6 @@ enum car_data {
 	car_light_r,
 	car_light_g,
 	car_light_b,
-	car_radio_station,
 	car_boost,
 	car_thirdperson_id,
 	car_klaxon,
@@ -882,7 +950,8 @@ enum car_data {
 	car_maxPassager,
 	car_battery,
 	car_particle,
-
+	car_donateur,
+	
 	car_data_max,
 };
 enum type_appart_bonus {

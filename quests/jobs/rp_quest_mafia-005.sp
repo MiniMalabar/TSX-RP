@@ -35,8 +35,8 @@
 #define MAX_ZONES		310
 
 public Plugin myinfo = {
-	name = "Quête: Braquage des distributeurs", author = "KoSSoLaX",
-	description = "RolePlay - Quête Mafia: Braquage des distributeurs",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Mafia: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -44,7 +44,8 @@ int g_iQuest, g_iDuration[MAXPLAYERS + 1], g_iStep[MAXPLAYERS + 1], g_iDoing[MAX
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -81,7 +82,7 @@ public void RP_OnClientWeaponPick(int client, int type) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Mon frère, Nous avons une mission de toi.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Nous voulons faire plier les banquiers", ITEMDRAW_DISABLED);

@@ -32,8 +32,8 @@
 #define	MAX_ZONES		300
 
 public Plugin myinfo = {
-	name = "Quête: Où est Charlie?", author = "KoSSoLaX",
-	description = "RolePlay - Quête Mafia: Où est Charlie?",
+	name = "Quête: "...QUEST_NAME, author = "KoSSoLaX",
+	description = "RolePlay - Quête Mafia: "...QUEST_NAME,
 	version = __LAST_REV__, url = "https://www.ts-x.eu"
 };
 
@@ -41,7 +41,8 @@ int g_iQuest, g_iDuration[MAXPLAYERS + 1], g_iGoing[MAXPLAYERS + 1];
 
 public void OnPluginStart() {
 	RegServerCmd("rp_quest_reload", Cmd_Reload);
-	
+}
+public void OnAllPluginsLoaded() {
 	g_iQuest = rp_RegisterQuest(QUEST_UNIQID, QUEST_NAME, QUEST_TYPE, fwdCanStart);
 	if( g_iQuest == -1 )
 		SetFailState("Erreur lors de la création de la quête %s %s", QUEST_UNIQID, QUEST_NAME);
@@ -52,8 +53,6 @@ public void OnPluginStart() {
 	rp_QuestAddStep(g_iQuest, i++,	Q2_Start,	Q1_Frame,	Q1_Abort,	Q1_Abort);
 	rp_QuestAddStep(g_iQuest, i++,	Q2_Start,	Q1_Frame,	Q1_Abort,	Q1_Abort);
 	rp_QuestAddStep(g_iQuest, i++,	Q2_Start,	Q1_Frame,	Q1_Abort,	Q5_Done);
-	
-	
 }
 public Action Cmd_Reload(int args) {
 	char name[64];
@@ -71,7 +70,7 @@ public bool fwdCanStart(int client) {
 public void Q1_Start(int objectiveID, int client) {
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Mon frère, l'un de nos hommes a disparu.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Nous avons besoin de toi.", ITEMDRAW_DISABLED);
@@ -97,7 +96,7 @@ public void Q1_Start(int objectiveID, int client) {
 public void Q2_Start(int objectiveID, int client) {	
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Vous avez trouvé des traces de son passage ici.", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Mais il n'y est pas. Infiltrez-vous dans", ITEMDRAW_DISABLED);
@@ -136,8 +135,10 @@ public void Q1_Frame(int objectiveID, int client) {
 		rp_QuestStepComplete(client, objectiveID);
 		
 		int cap = rp_GetRandomCapital(91);
-		rp_SetJobCapital(cap, rp_GetJobCapital(cap) - 1000);
-		rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + 1000);
+		rp_SetJobCapital(cap, rp_GetJobCapital(cap) - 1100);
+		rp_SetClientInt(client, i_AddToPay, rp_GetClientInt(client, i_AddToPay) + 1100);
+		rp_SetJobCapital(91, rp_GetJobCapital(91) + 100);
+		
 	}
 	else if( g_iDuration[client] <= 0 ) {
 		rp_QuestStepFail(client, objectiveID);
@@ -155,7 +156,7 @@ public void Q5_Done(int objectiveID, int client) {
 	
 	Menu menu = new Menu(MenuNothing);
 	
-	menu.SetTitle("Quète: %s", QUEST_NAME);
+	menu.SetTitle("Quête: %s", QUEST_NAME);
 	menu.AddItem("", "Interlocuteur anonyme :", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Les traces s'arrêtent ici...", ITEMDRAW_DISABLED);
 	menu.AddItem("", "Vous n'avez pas trouvé d'informations supplémentaires.", ITEMDRAW_DISABLED);
